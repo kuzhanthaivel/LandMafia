@@ -4,10 +4,12 @@ import Footer from "../../components/footer";
 import Image from "next/image";
 import { Outfit } from 'next/font/google';
 import { useWallet } from "@/context/WalletContext";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { 
   FileText
 } from 'lucide-react';
+import { addProperty, listenForPropertyAdded } from "../../utils/contractintegration/Contract";
+
 const outfit = Outfit({
   subsets: ["latin"],
   weight: "400",
@@ -47,10 +49,10 @@ const measurementTypes = [
 export default function UploadLand() {
   const {
     isConnected,
+    account
   } = useWallet();
 
   const [landData, setLandData] = useState({
-    propertyName: '',
     description: '',
     price: '',
     district: '',
@@ -60,10 +62,10 @@ export default function UploadLand() {
     googleMapLink: '',
     propertyImage: null,
     preview: null,
-    encumbranceCert: null,
-    saleDeed: null,
-    clearanceCert: null,
-    propertyTaxDoc: null
+    encumbranceCert: { file: null, hasFile: false },
+    saleDeed: { file: null, hasFile: false },
+    clearanceCert: { file: null, hasFile: false },
+    propertyTaxDoc: { file: null, hasFile: false }
   });
 
   const [isUploading, setIsUploading] = useState(false);
@@ -73,6 +75,32 @@ export default function UploadLand() {
   const saleDeedRef = useRef(null);
   const clearanceRef = useRef(null);
   const taxDocRef = useRef(null);
+
+  useEffect(() => {
+    const unsubscribe = listenForPropertyAdded((propertyId, seller, location, price) => {
+      if (seller.toLowerCase() === account?.toLowerCase()) {
+        setUploadStatus(`Property successfully registered on blockchain! Property ID: ${propertyId.toString()}`);
+        setIsUploading(false);
+        setLandData({
+          description: '',
+          price: '',
+          district: '',
+          landType: '',
+          landSize: '',
+          measurementType: '',
+          googleMapLink: '',
+          propertyImage: null,
+          preview: null,
+          encumbranceCert: { file: null, hasFile: false },
+          saleDeed: { file: null, hasFile: false },
+          clearanceCert: { file: null, hasFile: false },
+          propertyTaxDoc: { file: null, hasFile: false }
+        });
+      }
+    });
+
+    return () => unsubscribe();
+  }, [account]);
 
   const uploadFileToIPFS = async (file) => {
     const url = "https://api.pinata.cloud/pinning/pinFileToIPFS";
@@ -139,7 +167,10 @@ export default function UploadLand() {
     if (file) {
       setLandData(prev => ({
         ...prev,
-        [docType]: file
+        [docType]: {
+          file: file,
+          hasFile: true
+        }
       }));
     }
   };
@@ -150,84 +181,48 @@ export default function UploadLand() {
 
   const handleUpload = async () => {
     if (!isConnected || 
-        !landData.propertyName || 
         !landData.propertyImage || 
         !landData.description || 
         !landData.price || 
         !landData.district || 
         !landData.landType ||
         !landData.landSize ||
-        !landData.measurementType ||
-        !landData.encumbranceCert ||
-        !landData.saleDeed ||
-        !landData.clearanceCert ||
-        !landData.propertyTaxDoc) {
+        !landData.measurementType) {
       return;
     }
 
     setIsUploading(true);
-    setUploadStatus('Uploading property image...');
+    setUploadStatus('Uploading property image to IPFS...');
 
     try {
-      // Upload property image
+      // Upload only the property image to IPFS
       const imageUrl = await uploadFileToIPFS(landData.propertyImage);
-
-      // Upload documents
-      setUploadStatus('Uploading documents...');
-      const encumbranceUrl = await uploadFileToIPFS(landData.encumbranceCert);
-      const saleDeedUrl = await uploadFileToIPFS(landData.saleDeed);
-      const clearanceUrl = await uploadFileToIPFS(landData.clearanceCert);
-      const taxDocUrl = await uploadFileToIPFS(landData.propertyTaxDoc);
-
-      // Create metadata
-      setUploadStatus('Creating property metadata...');
-      const metadata = {
-        name: landData.propertyName,
+      
+      setUploadStatus('Registering property on blockchain...');
+      
+      // Prepare property data for blockchain
+      const propertyData = {
+        landImage: imageUrl,
+        location: landData.district,
+        googleMapLink: landData.googleMapLink || "",
+        size: `${landData.landSize} ${landData.measurementType}`,
+        price: landData.price.toString(),
         description: landData.description,
-        image: imageUrl,
-        attributes: [
-          { trait_type: "District", value: landData.district },
-          { trait_type: "Land Type", value: landData.landType },
-          { trait_type: "Land Size", value: `${landData.landSize} ${landData.measurementType}` },
-          { trait_type: "Price", value: landData.price.toString() },
-          { trait_type: "Google Map Link", value: landData.googleMapLink },
-          { trait_type: "Encumbrance Certificate", value: encumbranceUrl },
-          { trait_type: "Sale Deed", value: saleDeedUrl },
-          { trait_type: "Clearance Certificate", value: clearanceUrl },
-          { trait_type: "Property Tax Document", value: taxDocUrl }
-        ]
+        landType: landData.landType,
+        saleDeed: landData.saleDeed.hasFile,
+        clearanceCertificates: landData.clearanceCert.hasFile,
+        propertyTaxDocument: landData.propertyTaxDoc.hasFile,
+        encumbranceCertificate: landData.encumbranceCert.hasFile
       };
 
-      // Upload metadata
-      setUploadStatus('Uploading metadata to IPFS...');
-      const metadataBlob = new Blob([JSON.stringify(metadata)], { type: 'application/json' });
-      const metadataFile = new File([metadataBlob], "metadata.json");
-      const metadataUrl = await uploadFileToIPFS(metadataFile);
-
-      setUploadStatus('Property registered successfully!');
-
-      // Reset form
-      setLandData({
-        propertyName: '',
-        description: '',
-        price: '',
-        district: '',
-        landType: '',
-        landSize: '',
-        measurementType: '',
-        googleMapLink: '',
-        propertyImage: null,
-        preview: null,
-        encumbranceCert: null,
-        saleDeed: null,
-        clearanceCert: null,
-        propertyTaxDoc: null
-      });
+      // Call the smart contract function
+      const tx = await addProperty(propertyData);
+      setUploadStatus('Transaction sent. Waiting for confirmation...');
+      await tx.wait();
 
     } catch (error) {
       console.error('Upload error:', error);
       setUploadStatus(`Error: ${error.message}`);
-    } finally {
       setIsUploading(false);
     }
   };
@@ -289,7 +284,7 @@ export default function UploadLand() {
 
                 {/* Document Uploads */}
                 <div className="space-y-4">
-                  <h3 className="text-sm font-medium">Required Documents:</h3>
+                  <h3 className="text-sm font-medium">Document Uploads:</h3>
                   
                   <div className="space-y-3">
                     {/* Encumbrance Certificate */}
@@ -297,16 +292,21 @@ export default function UploadLand() {
                       <button
                         onClick={() => triggerFileInput(encumbranceRef)}
                         disabled={isUploading}
-                        className={`w-full text-left p-3 border border-gray-700 rounded-lg ${!isUploading ? 'hover:border-[#77227F]' : 'opacity-70'}`}
+                        className={`w-full text-left p-3 border rounded-lg flex items-center justify-between ${
+                          landData.encumbranceCert.hasFile 
+                            ? 'border-green-500 bg-green-500/10' 
+                            : 'border-gray-700 hover:border-[#77227F]'
+                        }`}
                       >
                         <div className="flex items-center">
-                          <FileText className="h-5 w-5 text-gray-400 mr-2" />
+                          <FileText className="h-5 w-5 mr-2" />
                           <span className="text-sm">
-                            {landData.encumbranceCert ? 
-                              landData.encumbranceCert.name : 
-                              "Encumbrance Certificate"}
+                            {landData.encumbranceCert.hasFile 
+                              ? landData.encumbranceCert.file.name 
+                              : "Encumbrance Certificate"}
                           </span>
                         </div>
+                        <span>{landData.encumbranceCert.hasFile ? '✓ Selected' : '✗ Not Selected'}</span>
                       </button>
                       <input
                         type="file"
@@ -323,16 +323,21 @@ export default function UploadLand() {
                       <button
                         onClick={() => triggerFileInput(saleDeedRef)}
                         disabled={isUploading}
-                        className={`w-full text-left p-3 border border-gray-700 rounded-lg ${!isUploading ? 'hover:border-[#77227F]' : 'opacity-70'}`}
+                        className={`w-full text-left p-3 border rounded-lg flex items-center justify-between ${
+                          landData.saleDeed.hasFile 
+                            ? 'border-green-500 bg-green-500/10' 
+                            : 'border-gray-700 hover:border-[#77227F]'
+                        }`}
                       >
                         <div className="flex items-center">
-                          <FileText className="h-5 w-5 text-gray-400 mr-2" />
+                          <FileText className="h-5 w-5 mr-2" />
                           <span className="text-sm">
-                            {landData.saleDeed ? 
-                              landData.saleDeed.name : 
-                              "Sale Deed"}
+                            {landData.saleDeed.hasFile 
+                              ? landData.saleDeed.file.name 
+                              : "Sale Deed"}
                           </span>
                         </div>
+                        <span>{landData.saleDeed.hasFile ? '✓ Selected' : '✗ Not Selected'}</span>
                       </button>
                       <input
                         type="file"
@@ -349,16 +354,21 @@ export default function UploadLand() {
                       <button
                         onClick={() => triggerFileInput(clearanceRef)}
                         disabled={isUploading}
-                        className={`w-full text-left p-3 border border-gray-700 rounded-lg ${!isUploading ? 'hover:border-[#77227F]' : 'opacity-70'}`}
+                        className={`w-full text-left p-3 border rounded-lg flex items-center justify-between ${
+                          landData.clearanceCert.hasFile 
+                            ? 'border-green-500 bg-green-500/10' 
+                            : 'border-gray-700 hover:border-[#77227F]'
+                        }`}
                       >
                         <div className="flex items-center">
-                          <FileText className="h-5 w-5 text-gray-400 mr-2" />
+                          <FileText className="h-5 w-5 mr-2" />
                           <span className="text-sm">
-                            {landData.clearanceCert ? 
-                              landData.clearanceCert.name : 
-                              "Clearance Certificate"}
+                            {landData.clearanceCert.hasFile 
+                              ? landData.clearanceCert.file.name 
+                              : "Clearance Certificate"}
                           </span>
                         </div>
+                        <span>{landData.clearanceCert.hasFile ? '✓ Selected' : '✗ Not Selected'}</span>
                       </button>
                       <input
                         type="file"
@@ -375,16 +385,21 @@ export default function UploadLand() {
                       <button
                         onClick={() => triggerFileInput(taxDocRef)}
                         disabled={isUploading}
-                        className={`w-full text-left p-3 border border-gray-700 rounded-lg ${!isUploading ? 'hover:border-[#77227F]' : 'opacity-70'}`}
+                        className={`w-full text-left p-3 border rounded-lg flex items-center justify-between ${
+                          landData.propertyTaxDoc.hasFile 
+                            ? 'border-green-500 bg-green-500/10' 
+                            : 'border-gray-700 hover:border-[#77227F]'
+                        }`}
                       >
                         <div className="flex items-center">
-                          <FileText className="h-5 w-5 text-gray-400 mr-2" />
+                          <FileText className="h-5 w-5 mr-2" />
                           <span className="text-sm">
-                            {landData.propertyTaxDoc ? 
-                              landData.propertyTaxDoc.name : 
-                              "Property Tax Document"}
+                            {landData.propertyTaxDoc.hasFile 
+                              ? landData.propertyTaxDoc.file.name 
+                              : "Property Tax Document"}
                           </span>
                         </div>
+                        <span>{landData.propertyTaxDoc.hasFile ? '✓ Selected' : '✗ Not Selected'}</span>
                       </button>
                       <input
                         type="file"
@@ -401,20 +416,6 @@ export default function UploadLand() {
 
               {/* Right Column - Form Fields */}
               <div className="space-y-6">
-                <div>
-                  <label htmlFor="propertyName" className="block text-sm font-medium mb-1">Property Name *</label>
-                  <input
-                    type="text"
-                    id="propertyName"
-                    name="propertyName"
-                    value={landData.propertyName}
-                    onChange={handleInputChange}
-                    placeholder="My Land Property"
-                    className="w-full border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#77227F] bg-gray-900/50 text-white"
-                    required
-                    disabled={isUploading}
-                  />
-                </div>
 
                 <div>
                   <label htmlFor="description" className="block text-sm font-medium mb-1">Description *</label>
@@ -542,32 +543,22 @@ export default function UploadLand() {
                   <button
                     onClick={handleUpload}
                     disabled={isUploading || !isConnected || 
-                      !landData.propertyName || 
                       !landData.propertyImage || 
                       !landData.description || 
                       !landData.price || 
                       !landData.district || 
                       !landData.landType ||
                       !landData.landSize ||
-                      !landData.measurementType ||
-                      !landData.encumbranceCert ||
-                      !landData.saleDeed ||
-                      !landData.clearanceCert ||
-                      !landData.propertyTaxDoc}
+                      !landData.measurementType}
                     className={`w-full py-3 px-6 rounded-lg font-medium transition-colors ${
                       (isUploading || !isConnected || 
-                       !landData.propertyName || 
                        !landData.propertyImage || 
                        !landData.description || 
                        !landData.price || 
                        !landData.district || 
                        !landData.landType ||
                        !landData.landSize ||
-                       !landData.measurementType ||
-                       !landData.encumbranceCert ||
-                       !landData.saleDeed ||
-                       !landData.clearanceCert ||
-                       !landData.propertyTaxDoc)
+                       !landData.measurementType)
                         ? 'bg-gray-600 cursor-not-allowed'
                         : 'bg-[#77227F] hover:bg-purple-700'
                     }`}

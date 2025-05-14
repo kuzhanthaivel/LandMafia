@@ -421,7 +421,7 @@ const marketContractABI = [
 		"stateMutability": "view",
 		"type": "function"
 	}
-]:
+];
 
 const marketContractAddress = "0x599d490EEEB99d6eAE5396059671C45c6BAacFED"; 
 
