@@ -8,87 +8,17 @@ import { useState, useEffect } from "react";
 import { useWallet } from "@/context/WalletContext";
 import { useRouter } from "next/navigation";
 import DummyImage from '../../assets/Bg.jpg'
+import dummyProperties from "@/utils/testData";
 
 const outfit = Outfit({
   subsets: ["latin"],
   weight: "400",
 });
 
-// Dummy data for Tamil Nadu lands
-const dummyLands = [
-  {
-    id: 1,
-    title: "Beachfront Property in Chennai",
-    description: "Prime beachfront land with 100ft road access, ideal for resort development",
-    price: "1,50,00,000",
-    location: "Chennai",
-    landType: "Commercial Plot",
-    image: DummyImage,
-    size: "2400 sq.ft",
-    documents: ["EC", "Sale Deed", "Tax Receipts"],
-  },
-  {
-    id: 2,
-    title: "Agricultural Land in Coimbatore",
-    description: "Fertile agricultural land with water access, suitable for organic farming",
-    price: "75,00,000",
-    location: "Coimbatore",
-    landType: "Agricultural Land",
-    image: DummyImage,
-    size: "2 Acres",
-    documents: ["EC", "Patta", "Chitta"],
-  },
-  {
-    id: 3,
-    title: "Residential Plot in Madurai",
-    description: "Corner plot in developing residential area with all approvals",
-    price: "45,00,000",
-    location: "Madurai",
-    landType: "Residential Plot",
-    image: DummyImage,
-    size: "1800 sq.ft",
-    documents: ["Approval Plan", "EC", "Sale Deed"],
-  },
-  {
-    id: 4,
-    title: "Hill View Property in Ooty",
-    description: "Scenic hill view land with road access, perfect for vacation home",
-    price: "2,20,00,000",
-    location: "Nilgiris",
-    landType: "Farm House",
-    image: DummyImage,
-    size: "5 Acres",
-    documents: ["EC", "Approval", "Tax Receipts"],
-  },
-  {
-    id: 5,
-    title: "Commercial Space in Trichy",
-    description: "Prime commercial space in busy market area with high footfall",
-    price: "1,80,00,000",
-    location: "Tiruchirappalli",
-    landType: "Shop",
-    image: DummyImage,
-    size: "1200 sq.ft",
-    documents: ["EC", "Commercial Approval", "Tax Paid"],
-  },
-  {
-    id: 6,
-    title: "Farm Land in Thanjavur",
-    description: "Fertile delta land with irrigation facilities, suitable for paddy cultivation",
-    price: "60,00,000",
-    location: "Thanjavur",
-    landType: "Agricultural Land",
-    image: DummyImage,
-    size: "3 Acres",
-    documents: ["Patta", "Chitta", "EC"],
-  },
-];
-
 export default function LandMarketplace() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLandType, setSelectedLandType] = useState("All Types");
   const [selectedLocation, setSelectedLocation] = useState("All Locations");
-  const [lands, setLands] = useState(dummyLands);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -100,28 +30,39 @@ export default function LandMarketplace() {
     shortenAddress,
   } = useWallet();
 
-  // Get all unique land types from the data
-  const allLandTypes = ["All Types", ...new Set(lands.map(land => land.landType))];
-  
-  // Get all unique locations from the data
-  const allLocations = ["All Locations", ...new Set(lands.map(land => land.location))];
+  // Filter properties that are available in the market
+  const availableProperties = dummyProperties.filter(
+    (property) => property.marketStatus === "available"
+  );
 
-  const filteredLands = lands.filter((land) => {
+  // Get all unique land types from the data
+  const allLandTypes = [
+    "All Types",
+    ...new Set(availableProperties.map((property) => property.landType)),
+  ];
+
+  // Get all unique locations from the data
+  const allLocations = [
+    "All Locations",
+    ...new Set(availableProperties.map((property) => property.location)),
+  ];
+
+  const filteredLands = availableProperties.filter((property) => {
     // Search term filter
-    const matchesSearch = 
-      land.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      land.description.toLowerCase().includes(searchTerm.toLowerCase());
-    
+    const matchesSearch =
+      property.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      property.discribtion.toLowerCase().includes(searchTerm.toLowerCase());
+
     // Land type filter
-    const matchesLandType = 
-      selectedLandType === "All Types" || 
-      land.landType === selectedLandType;
-    
+    const matchesLandType =
+      selectedLandType === "All Types" ||
+      property.landType === selectedLandType;
+
     // Location filter
-    const matchesLocation = 
-      selectedLocation === "All Locations" || 
-      land.location === selectedLocation;
-    
+    const matchesLocation =
+      selectedLocation === "All Locations" ||
+      property.location === selectedLocation;
+
     return matchesSearch && matchesLandType && matchesLocation;
   });
 
@@ -135,7 +76,7 @@ export default function LandMarketplace() {
   };
 
   const handleViewLand = (landId) => {
-    router.push(`/viewland/${landId}`);
+  router.push(`/viewLand/${landId}`);
   };
 
   return (
@@ -148,7 +89,7 @@ export default function LandMarketplace() {
             <div className="bg-white/10 backdrop-blur-md border-white/10 mt-6 px-6 py-3 rounded-lg flex items-center justify-between max-w-lg mx-auto shadow-inner z-20">
               <input
                 type="text"
-                placeholder="Search lands by title or description..."
+                placeholder="Search lands by location or description..."
                 className="bg-transparent outline-none w-full placeholder-[#6D737A]"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -166,12 +107,18 @@ export default function LandMarketplace() {
                 className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 appearance-none pr-8 focus:outline-none focus:ring-2 focus:ring-[#77227F]"
               >
                 {allLandTypes.map((type) => (
-                  <option key={type} value={type}>{type}</option>
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
                 ))}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
-                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+                <svg
+                  className="fill-current h-4 w-4"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                >
+                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
                 </svg>
               </div>
             </div>
@@ -183,12 +130,18 @@ export default function LandMarketplace() {
                 className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 appearance-none pr-8 focus:outline-none focus:ring-2 focus:ring-[#77227F]"
               >
                 {allLocations.map((location) => (
-                  <option key={location} value={location}>{location}</option>
+                  <option key={location} value={location}>
+                    {location}
+                  </option>
                 ))}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
-                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+                <svg
+                  className="fill-current h-4 w-4"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                >
+                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
                 </svg>
               </div>
             </div>
@@ -206,41 +159,47 @@ export default function LandMarketplace() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 justify-items-center mb-16">
               {filteredLands.map((land) => (
-                <div 
+                <div
                   key={land.id}
                   className="border rounded-md shadow-lg text-[#6D737A] font-sans space-y-2 px-3 py-4 bg-white/10 backdrop-blur-md border-white/10 hover:border-[#77227F] transition-colors cursor-pointer w-full max-w-xs"
                   onClick={() => handleViewLand(land.id)}
                 >
                   <div className="relative h-48 w-full rounded-lg overflow-hidden">
                     <Image
-                      src={land.image}
-                      alt={land.title}
+                      src={land.landimage || DummyImage}
+                      alt={land.location}
                       fill
                       className="object-cover"
                       onError={(e) => {
                         e.target.onerror = null;
-                        e.target.src = "/land-placeholder.jpg";
+                        e.target.src = DummyImage;
                       }}
                     />
                   </div>
 
                   <div className="pt-2">
-                    <h3 className="font-semibold text-white text-lg">{land.title}</h3>
+                    <h3 className="font-semibold text-white text-lg">
+                      {land.landType} in {land.location}
+                    </h3>
                     <div className="flex items-center text-sm text-gray-400 mt-1">
                       <FaMapMarkerAlt className="mr-1" />
                       <span>{land.location}</span>
                     </div>
                     <p className="text-sm text-gray-400 mt-2 line-clamp-2">
-                      {land.description}
+                      {land.discribtion}
                     </p>
                     <div className="flex justify-between items-center mt-3">
                       <div>
                         <span className="text-xs text-gray-500">Type</span>
-                        <p className="text-sm font-medium text-white">{land.landType}</p>
+                        <p className="text-sm font-medium text-white">
+                          {land.landType}
+                        </p>
                       </div>
                       <div>
                         <span className="text-xs text-gray-500">Size</span>
-                        <p className="text-sm font-medium text-white">{land.size}</p>
+                        <p className="text-sm font-medium text-white">
+                          {land.size}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -249,7 +208,7 @@ export default function LandMarketplace() {
                     <div className="flex flex-col">
                       <span className="text-xs text-gray-500">Price</span>
                       <span className="font-semibold text-white text-lg">
-                        ₹{land.price}
+                        {land.price}
                       </span>
                     </div>
                     <button

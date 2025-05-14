@@ -125,7 +125,7 @@ export default function Header() {
           </button>
         )}
       </div>
-     <span className="w-2 h-2 bg-[#77227F] items-end rounded-full"></span>
+     <Link href='/Admin ' className="w-2 h-2 bg-[#77227F] items-end rounded-full"> </Link>
 </div>
     </header>
   );

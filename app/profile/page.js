@@ -1,78 +1,21 @@
 "use client";
+import { FaMapMarkerAlt } from "react-icons/fa";
 import Header from "../../components/header";
 import Footer from "../../components/footer";
 import Image from "next/image";
 import { Outfit } from 'next/font/google';
-import { FaEthereum } from "react-icons/fa";
 import { FiFilter, FiSearch, FiChevronDown, FiX } from "react-icons/fi";
 import { useState, useEffect } from "react";
 import { useWallet } from "@/context/WalletContext";
-import {
-  viewAllAssets,
-  sellAsset,
-  unlistAsset,
-  reSellAsset,
-  listenForAssetAdded,
-  listenForAssetSold,
-  listenForStatusUpdates
-} from "../../utils/contractintegration/Contract";
+import dummyProperties from "../../utils/testData";
+import { useRouter } from "next/navigation";
 
 const outfit = Outfit({
   subsets: ["latin"],
   weight: "400",
 });
 
-const NftImage = ({ metadataUrl }) => {
-  const [imageUrl, setImageUrl] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const fetchMetadata = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(metadataUrl);
-        if (!response.ok) throw new Error('Failed to fetch metadata');
-
-        const metadata = await response.json();
-        if (!metadata.image) throw new Error('No image in metadata');
-
-        const normalizedUrl = metadata.image
-          .replace('gateway.pinata.cloud', 'ipfs.io')
-          .replace('ipfs://', 'https://ipfs.io/ipfs/');
-
-        setImageUrl(normalizedUrl);
-      } catch (err) {
-        console.error('Error loading NFT image:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMetadata();
-  }, [metadataUrl]);
-
-  if (loading) return <div className="w-full h-full flex items-center justify-center">Loading image...</div>;
-  if (error) return <div className="w-full h-full flex items-center justify-center text-red-500">Error loading image</div>;
-
-  return (
-    <Image
-      src={imageUrl}
-      alt="NFT Image"
-      fill
-      className="object-contain rounded-lg"
-      onError={(e) => {
-        console.error("Error loading image:", imageUrl);
-        e.target.onerror = null;
-        e.target.src = "/placeholder-nft.png";
-      }}
-    />
-  );
-};
-
-
-export default function Collection() {
+export default function Profile() {
   const {
     isConnected,
     account,
@@ -83,109 +26,82 @@ export default function Collection() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
-    category: [],
+    landType: [],
     status: []
   });
-  const [assets, setAssets] = useState([]);
-  const [filteredAssets, setFilteredAssets] = useState([]);
+
+  const [properties, setProperties] = useState([]);
+  const [filteredProperties, setFilteredProperties] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [filteredTransactions, setFilteredTransactions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [resellPrice, setResellPrice] = useState("");
-  const [resellAssetId, setResellAssetId] = useState(null);
-  const [showResellModal, setShowResellModal] = useState(false);
-  const allCategories = [...new Set(assets.map(item => item.category))];
-  const allStatuses = ["Active", "Market", "Sold"];
-
-  useEffect(() => {
-    const fetchAssets = async () => {
-      try {
-        const allAssets = await viewAllAssets();
-        const formattedAssets = allAssets.map((asset, index) => ({
-          id: index,
-          seller: asset.seller,
-          buyer: asset.buyer,
-          name: asset.assetName,
-          description: asset.description,
-          price: asset.price,
-          category: asset.category,
-          image: asset.assetImage,
-          profileStatus: asset.ProfileStatus,
-          marketStatus: asset.MarketStatus,
-          transactionStatus: asset.TransactionStatus,
-          royality: asset.royality
-        }));
-
-        setAssets(formattedAssets);
-        setFilteredAssets(formattedAssets);
-
-        const userTransactions = formattedAssets
-          .filter(asset =>
-            (asset.seller.toLowerCase() === account?.toLowerCase() ||
-              asset.buyer.toLowerCase() === account?.toLowerCase()) &&
-            asset.transactionStatus === "Completed"
-          )
-          .map(asset => ({
-            id: asset.id,
-            assetName: asset.name,
-            amount: `${asset.price} ETH`,
-            counterparty: asset.seller.toLowerCase() === account?.toLowerCase() ? asset.buyer : asset.seller,
-            type: asset.seller.toLowerCase() === account?.toLowerCase() ? "Sell" : "Buy",
-            date: new Date().toISOString().split('T')[0]
-          }));
-
-        setTransactions(userTransactions);
-        setFilteredTransactions(userTransactions);
-      } catch (error) {
-        console.error("Error fetching assets:", error);
-      } finally {
-        setLoading(false);
-      }
+  const [loading, setLoading] = useState(false);
+  const allLandTypes = [...new Set(dummyProperties.map(item => item.landType))];
+  const allStatuses = ["available", "nonAvailable"];
+  const router = useRouter();
+  const handleViewLand = (landId) => {
+    router.push(`/viewLand/${landId}`);
     };
 
+  useEffect(() => {
     if (isConnected && account) {
-      fetchAssets();
+      setLoading(true);
+      const userProperties = dummyProperties.filter(property =>
+        property.seller.toLowerCase() === account.toLowerCase() ||
+        property.buyer.toLowerCase() === account.toLowerCase()
+      );
 
-      const cleanupAdded = listenForAssetAdded(() => fetchAssets());
-      const cleanupSold = listenForAssetSold(() => fetchAssets());
-      const cleanupStatus = listenForStatusUpdates(() => fetchAssets());
+      setProperties(userProperties);
+      setFilteredProperties(userProperties);
 
-      return () => {
-        cleanupAdded();
-        cleanupSold();
-        cleanupStatus();
-      };
+      const userTransactions = dummyProperties
+        .filter(property =>
+          (property.seller.toLowerCase() === account.toLowerCase() ||
+            property.buyer.toLowerCase() === account.toLowerCase()) &&
+          property.transactionData === "completed"
+        )
+        .map(property => ({
+          id: property.id,
+          propertyName: `${property.landType} in ${property.location}`,
+          amount: property.price,
+          counterparty: property.seller.toLowerCase() === account.toLowerCase() ?
+            property.buyer : property.seller,
+          type: property.seller.toLowerCase() === account.toLowerCase() ? "Sell" : "Buy",
+          date: property.createdAt,
+          status: property.registrationRequest
+        }));
+
+      setTransactions(userTransactions);
+      setFilteredTransactions(userTransactions);
+      setLoading(false);
     }
   }, [isConnected, account]);
 
   useEffect(() => {
-    let result = assets.filter(asset =>
-      asset.seller.toLowerCase() === account?.toLowerCase() ||
-      asset.buyer.toLowerCase() === account?.toLowerCase()
+    let result = properties.filter(property =>
+      property.seller.toLowerCase() === account?.toLowerCase() ||
+      property.buyer.toLowerCase() === account?.toLowerCase()
     );
 
     if (searchTerm) {
-      result = result.filter(asset =>
-        asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        asset.description.toLowerCase().includes(searchTerm.toLowerCase())
+      result = result.filter(property =>
+        property.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        property.discribtion.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-    if (filters.category.length > 0) {
-      result = result.filter(asset => filters.category.includes(asset.category));
+    if (filters.landType.length > 0) {
+      result = result.filter(property => filters.landType.includes(property.landType));
     }
 
     if (filters.status.length > 0) {
-      result = result.filter(asset => filters.status.includes(asset.profileStatus));
-    }
-
-    setFilteredAssets(result);
-    console.log(filteredAssets)
-  }, [searchTerm, filters, assets, account]);
+      result = result.filter(property => filters.status.includes(property.marketStatus));
+    }                                      
+    setFilteredProperties(result);
+  }, [searchTerm, filters, properties, account]);
 
   useEffect(() => {
     if (searchTerm) {
       const filtered = transactions.filter(tx =>
-        tx.assetName.toLowerCase().includes(searchTerm.toLowerCase())
+        tx.propertyName.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredTransactions(filtered);
     } else {
@@ -208,67 +124,10 @@ export default function Collection() {
 
   const clearFilters = () => {
     setFilters({
-      category: [],
+      landType: [],
       status: []
     });
     setSearchTerm("");
-  };
-
-  const handleSell = async (assetId) => {
-    if (!isConnected) {
-      alert("Please connect your wallet first");
-      return;
-    }
-
-    try {
-      await sellAsset(assetId);
-      alert("Asset listed for sale successfully");
-    } catch (error) {
-      console.error("Error selling asset:", error);
-      alert("Failed to list asset for sale");
-    }
-  };
-
-  const handleUnlist = async (assetId) => {
-    if (!isConnected) {
-      alert("Please connect your wallet first");
-      return;
-    }
-
-    try {
-      await unlistAsset(assetId);
-      alert("Asset unlisted successfully");
-    } catch (error) {
-      console.error("Error unlisting asset:", error);
-      alert("Failed to unlist asset");
-    }
-  };
-
-  const openResellModal = (assetId) => {
-    setResellAssetId(assetId);
-    setShowResellModal(true);
-  };
-
-  const handleResell = async () => {
-    if (!isConnected) {
-      alert("Please connect your wallet first");
-      return;
-    }
-
-    if (!resellPrice || isNaN(resellPrice) || parseFloat(resellPrice) <= 0) {
-      alert("Please enter a valid price");
-      return;
-    }
-
-    try {
-      await reSellAsset(resellAssetId, resellPrice);
-      alert("Asset listed for resale successfully");
-      setShowResellModal(false);
-      setResellPrice("");
-    } catch (error) {
-      console.error("Error reselling asset:", error);
-      alert(`Failed to list asset for resale: ${error.message}`);
-    }
   };
 
   if (!isConnected) {
@@ -277,8 +136,8 @@ export default function Collection() {
         <div className="flex-grow">
           <Header />
           <div className="min-h-screen px-4 sm:px-8 lg:px-20 py-12 relative z-10 flex flex-col items-center justify-center">
-            <h1 className="text-3xl font-bold mb-6">My Collection</h1>
-            <p className="text-xl mb-8">Please connect your wallet to view your collection</p>
+            <h1 className="text-3xl font-bold mb-6">My Profile</h1>
+            <p className="text-xl mb-8">Please connect your wallet to view your properties</p>
             <button
               onClick={connectWallet}
               className="bg-[#77227F] hover:bg-[#77227F] text-white px-6 py-3 rounded-lg font-semibold"
@@ -298,7 +157,7 @@ export default function Collection() {
         <div className="flex-grow">
           <Header />
           <div className="min-h-screen px-4 sm:px-8 lg:px-20 py-12 relative z-10 flex flex-col items-center justify-center">
-            <h1 className="text-3xl font-bold mb-6">Loading your collection...</h1>
+            <h1 className="text-3xl font-bold mb-6">Loading your properties...</h1>
           </div>
         </div>
         <Footer />
@@ -314,7 +173,7 @@ export default function Collection() {
         <div className="min-h-screen px-4 sm:px-8 lg:px-20 py-12 relative z-10">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div>
-              <h1 className="text-3xl font-bold">My Collection</h1>
+              <h1 className="text-3xl font-bold">My Properties</h1>
               <p className="text-gray-400">{shortenAddress(account)}</p>
             </div>
 
@@ -323,7 +182,7 @@ export default function Collection() {
                 <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search collection..."
+                  placeholder="Search properties..."
                   className="w-full bg-white/10 border border-white/20 rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#77227F]"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -358,31 +217,29 @@ export default function Collection() {
                           <button
                             key={status}
                             className={`text-xs px-3 py-1 rounded-md ${filters.status.includes(status)
-                              ? status === "Active" ? "bg-green-900 text-green-200" :
-                                status === "Market" ? "bg-blue-900 text-blue-200" :
-                                  "bg-purple-900 text-purple-200"
+                              ? "bg-[#77227F] text-white"
                               : "bg-gray-700 text-gray-300 hover:bg-gray-600"
                               }`}
                             onClick={() => toggleFilter('status', status)}
                           >
-                            {status}
+                            {status === "available" ? "Available" : "Sold"}
                           </button>
                         ))}
                       </div>
                     </div>
                     <div className="mb-4">
-                      <h4 className="text-sm font-medium mb-2">Category</h4>
+                      <h4 className="text-sm font-medium mb-2">Land Type</h4>
                       <div className="flex flex-wrap gap-2">
-                        {allCategories.map(category => (
+                        {allLandTypes.map(type => (
                           <button
-                            key={category}
-                            className={`text-xs px-3 py-1 rounded-md ${filters.category.includes(category)
-                              ? "bg-[#77227F] text-[#77227F]"
+                            key={type}
+                            className={`text-xs px-3 py-1 rounded-md ${filters.landType.includes(type)
+                              ? "bg-[#77227F] text-white"
                               : "bg-gray-700 text-gray-300 hover:bg-gray-600"
                               }`}
-                            onClick={() => toggleFilter('category', category)}
+                            onClick={() => toggleFilter('landType', type)}
                           >
-                            {category}
+                            {type}
                           </button>
                         ))}
                       </div>
@@ -393,11 +250,11 @@ export default function Collection() {
             </div>
           </div>
 
-          {(filters.category.length > 0 || filters.status.length > 0) && (
+          {(filters.landType.length > 0 || filters.status.length > 0) && (
             <div className="flex flex-wrap gap-2 mb-6">
               {filters.status.map(status => (
                 <div key={status} className="flex items-center bg-gray-700 rounded-full px-3 py-1 text-sm">
-                  {status}
+                  {status === "available" ? "Available" : "Sold"}
                   <button
                     onClick={() => toggleFilter('status', status)}
                     className="ml-2 text-gray-300 hover:text-white"
@@ -406,11 +263,11 @@ export default function Collection() {
                   </button>
                 </div>
               ))}
-              {filters.category.map(category => (
-                <div key={category} className="flex items-center bg-gray-700 rounded-full px-3 py-1 text-sm">
-                  {category}
+              {filters.landType.map(type => (
+                <div key={type} className="flex items-center bg-gray-700 rounded-full px-3 py-1 text-sm">
+                  {type}
                   <button
-                    onClick={() => toggleFilter('category', category)}
+                    onClick={() => toggleFilter('landType', type)}
                     className="ml-2 text-gray-300 hover:text-white"
                   >
                     <FiX size={14} />
@@ -422,102 +279,145 @@ export default function Collection() {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
             <div className="bg-white/10 p-4 rounded-lg">
-              <p className="text-gray-400 text-sm">Total Items</p>
-              <p className="text-2xl font-bold">{filteredAssets.length}</p>
+              <p className="text-gray-400 text-sm">Total Properties</p>
+              <p className="text-2xl font-bold">{filteredProperties.length}</p>
             </div>
             <div className="bg-white/10 p-4 rounded-lg">
               <p className="text-gray-400 text-sm">Total Value</p>
-              <p className="text-2xl font-bold flex items-center">
-                <FaEthereum className="mr-1" />
-                {filteredAssets.reduce((sum, item) => sum + parseFloat(item.price), 0).toFixed(2)} ETH
+              <p className="text-2xl font-bold">
+                {filteredProperties.reduce((sum, item) => {
+                  const price = parseFloat(item.price.replace(/[^0-9]/g, ''));
+                  return sum + (isNaN(price) ? 0 : price)
+                }, 0).toLocaleString('en-IN', {
+                  style: 'currency',
+                  currency: 'INR',
+                  minimumFractionDigits: 0
+                })}
               </p>
             </div>
             <div className="bg-white/10 p-4 rounded-lg">
               <p className="text-gray-400 text-sm">Most Valuable</p>
               <p className="text-2xl font-bold">
-                {filteredAssets.length > 0
-                  ? filteredAssets.reduce((max, item) => parseFloat(item.price) > parseFloat(max.price) ? item : max).name
+                {filteredProperties.length > 0
+                  ? filteredProperties.reduce((max, item) => {
+                    const currentPrice = parseFloat(item.price.replace(/[^0-9]/g, ''));
+                    const maxPrice = parseFloat(max.price.replace(/[^0-9]/g, ''));
+                    return currentPrice > maxPrice ? item : max;
+                  }).location
                   : "N/A"}
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 justify-items-center mb-16">
-            {filteredAssets.map((asset) => (
+          <div className="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 justify-items-center mb-16">
+            {filteredProperties.map((property) => (
               <div
-                key={asset.id}
+                key={property.id}
+                                  onClick={() => handleViewLand(property.id)}
                 className="border rounded-lg shadow-lg text-[#6D737A] font-sans space-y-3 px-3 py-4 w-full max-w-xs bg-white/10 backdrop-blur-md border-white/10 hover:border-[#77227F] transition-colors relative"
               >
-                <div className="relative bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg flex items-center justify-center w-72 h-72">
-                  <NftImage metadataUrl={asset.image} />
+                <div className="relative bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg flex items-center justify-center w-full h-48">
+                  <Image
+                    src={property.landimage}
+                    alt={property.location}
+                    fill
+                    className="object-cover rounded-lg"
+                    onError={(e) => {
+                      console.error("Error loading image:", property.landimage);
+                      e.target.onerror = null;
+                      e.target.src = "/placeholder-property.jpg";
+                    }}
+                  />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-white text-lg">
+                    {property.landType} in {property.location}
+                  </h3>
+                  <p className="text-sm text-gray-400 line-clamp-2">{property.discribtion}</p>
                 </div>
 
-                <div>
-                  <h3 className="font-semibold text-white text-lg">{asset.name}</h3>
-                  <p className="text-sm text-gray-400 line-clamp-2">{asset.description}</p>
-                </div>
-                <div className="flex gap-2 items-center text-sm">
-                  <div className="text-gray-400">Royalty:</div>
-                  <div className="text-white font-medium">
-                    {asset.royality ? `${asset.royality}%` : '0%'}
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1 text-sm text-green-400">
-                    <FaEthereum className="text-green-400 w-5 h-5" />
-                    <div className="flex flex-col">
-                      <span className="text-xs text-gray-400">Value</span>
-                      <span className="font-semibold text-white">{asset.price} ETH</span>
+                <div className="flex justify-between items-center">
+                  <div className="flex gap-2 items-center text-sm">
+                    <div className="text-gray-400">Size:</div>
+                    <div className="text-white font-medium">
+                      {property.size}
                     </div>
                   </div>
-                  <div className={`text-xs px-2 py-1 rounded flex items-center ${asset.profileStatus === "Active" ? "bg-green-900/90 text-white" :
-                    asset.profileStatus === "Market" ? "bg-blue-900/90 text-white" :
-                      "bg-purple-900/90 text-white"
-                    }`}>
-                    {asset.profileStatus}
+                  <div className="flex items-center text-sm text-gray-400 mt-1">
+                    <FaMapMarkerAlt className="mr-1" />
+                    <span>{property.location}</span>
                   </div>
                 </div>
 
-                {asset.seller.toLowerCase() === account.toLowerCase() && asset.profileStatus === "Active" && (
-                  <button
-                    onClick={() => handleSell(asset.id)}
-                    className="w-full mt-3 bg-red-600 hover:bg-red-700 text-white py-2 rounded-md font-medium transition-colors"
-                  >
-                    Sell
-                  </button>
+                <div className="flex items-center justify-between">
+                  <div className="flex flex-col">
+                    <span className="text-xs text-gray-400">Price</span>
+                    <span className="font-semibold text-white">{property.price}</span>
+                  </div>
+                  <div className={`text-xs px-2 py-1 rounded flex items-center ${property.marketStatus === "available" ? "bg-green-900/90 text-white" : "bg-purple-900/90 text-white"}`}>
+                    {property.propertyVerification === "approved" ? "Approved" : <>{property.propertyVerification === "rejected" ? "Fake" : "Pending"} </>}
+                  </div>
+                </div>
+
+                {property.seller.toLowerCase() === account.toLowerCase() && (
+                  <>
+                    {property.transactionData === "completed" ? (
+                      <button
+                        className="w-full mt-3 bg-gray-600 text-white py-2 rounded-md font-medium cursor-not-allowed"
+                        disabled
+                      >
+                        Sold Out
+                      </button>
+                    ) : (
+                      <>
+                        {property.propertyVerification === "approved" ? (
+                          <button
+                            className="w-full mt-3 bg-[#77227F] hover:bg-[#77227F] text-white py-2 rounded-md font-medium transition-colors"
+                            onClick={() => console.log("Sell property", property.id)}
+                          >
+                            Sell
+                          </button>
+                        ) : property.propertyVerification === "rejected" ? (
+                          <button
+                            className="w-full mt-3 bg-red-600 text-white py-2 rounded-md font-medium cursor-not-allowed"
+                            disabled
+                          >
+                            Rejected
+                          </button>
+                        ) : (
+                          <button
+                            className="w-full mt-3 bg-yellow-600 text-white py-2 rounded-md font-medium cursor-not-allowed"
+                            disabled
+                          >
+                            Verification Pending
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </>
                 )}
-                {asset.seller.toLowerCase() === account.toLowerCase() && asset.profileStatus === "Market" && (
-                  <button
-                    onClick={() => handleUnlist(asset.id)}
-                    className="w-full mt-3 bg-yellow-600 hover:bg-yellow-700 text-white py-2 rounded-md font-medium transition-colors"
-                  >
-                    Unlist
-                  </button>
-                )}
-                {asset.buyer.toLowerCase() === account.toLowerCase() && asset.profileStatus === "Sold" && (
-                  <button
-                    onClick={() => openResellModal(asset.id)}
-                    className="w-full mt-3 bg-[#77227F] hover:[#77227F] text-white py-2 rounded-md font-medium transition-colors"
-                  >
-                    Resell
-                  </button>
-                )}
-                {asset.profileStatus === "Sold" && asset.buyer.toLowerCase() !== account.toLowerCase() && (
-                  <button
-                    disabled
-                    className="w-full mt-3 bg-gray-600 text-white py-2 rounded-md font-medium cursor-not-allowed"
-                  >
-                    Sold
-                  </button>
+
+                {property.buyer.toLowerCase() === account.toLowerCase() && (
+                  <div className="flex flex-col gap-2 mt-3">
+                    <div className={`absolute -top-2 -left-2 text-xs px-2 py-1 rounded text-center ${property.registrationRequest === "approved" ? "bg-green-900/90 text-white" : "bg-yellow-600/90 text-white"}`}>
+                      Registration: {property.registrationRequest === "approved" ? "Approved" : "Pending"}
+                    </div>
+                    <button
+                      className="w-full bg-gray-600 text-white py-2 rounded-md font-medium cursor-not-allowed"
+                      disabled
+                    >
+                      Purchased
+                    </button>
+                  </div>
                 )}
               </div>
             ))}
           </div>
 
-          {filteredAssets.length === 0 && (
+          {filteredProperties.length === 0 && (
             <div className="flex flex-col items-center justify-center py-20">
-              <div className="text-5xl mb-4">🛍️</div>
-              <h3 className="text-xl font-bold mb-2">No assets found</h3>
+              <div className="text-5xl mb-4">🏡</div>
+              <h3 className="text-xl font-bold mb-2">No properties found</h3>
               <p className="text-gray-400 mb-6">Try adjusting your search or filters</p>
               <button
                 className="bg-[#77227F] text-white px-6 py-3 rounded-lg font-semibold"
@@ -534,21 +434,20 @@ export default function Collection() {
               <thead className="bg-white/10">
                 <tr>
                   <th className="px-4 py-3">S.No</th>
-                  <th className="px-4 py-3">Asset Name</th>
+                  <th className="px-4 py-3">Property</th>
                   <th className="px-4 py-3">Amount</th>
                   <th className="px-4 py-3">Role</th>
                   <th className="px-4 py-3">Counterparty</th>
                   <th className="px-4 py-3">Type</th>
+                  <th className="px-4 py-3">Status</th>
                 </tr>
               </thead>
               <tbody className="bg-white/5">
                 {filteredTransactions.map((tx, i) => (
                   <tr key={i} className="border-b border-white/10 hover:bg-white/10 transition-colors">
                     <td className="px-4 py-3 font-bold">{i + 1}</td>
-                    <td className="px-4 py-3 font-bold">{tx.assetName}</td>
-                    <td className="px-4 py-3 text-green-400 flex items-center">
-                      <FaEthereum className="mr-1" /> {tx.amount}
-                    </td>
+                    <td className="px-4 py-3 font-bold">{tx.propertyName}</td>
+                    <td className="px-4 py-3">{tx.amount}</td>
                     <td className="px-4 py-3 text-gray-400">
                       {tx.type === "Buy" ? "Buyer" : "Seller"}
                     </td>
@@ -558,6 +457,9 @@ export default function Collection() {
                     <td className={`px-4 py-3 ${tx.type === "Buy" ? "text-green-400" : "text-red-400"}`}>
                       {tx.type}
                     </td>
+                    <td className={`px-4 py-3 ${tx.status === "approved" ? "text-green-400" : "text-yellow-400"}`}>
+                      {tx.status === "approved" ? "Completed" : "Pending"}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -565,43 +467,6 @@ export default function Collection() {
           </div>
         </div>
       </div>
-
-      {showResellModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-xl font-bold mb-4">Resell Asset</h3>
-            <div className="mb-4">
-              <label className="block text-gray-400 mb-2">New Price (ETH)</label>
-              <input
-                type="number"
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#77227F]"
-                value={resellPrice}
-                onChange={(e) => setResellPrice(e.target.value)}
-                min="0"
-                step="0.01"
-                placeholder="Enter new price"
-              />
-            </div>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => {
-                  setShowResellModal(false);
-                  setResellPrice("");
-                }}
-                className="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleResell}
-                className="px-4 py-2 bg-[#77227F] hover:bg-[#77227F] rounded-lg"
-              >
-                Confirm Resell
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <Footer />
     </div>

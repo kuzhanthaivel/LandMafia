@@ -10,14 +10,15 @@
   },
   "dependencies": {
     "@rainbow-me/rainbowkit": "^2.2.4",
+    "env": "^0.0.2",
     "ethers": "^5.7.2",
     "framer-motion": "^12.6.3",
     "ipfs-http-client": "^60.0.1",
     "lucide-react": "^0.510.0",
     "next": "15.2.4",
     "nft.storage": "^7.2.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
     "react-icons": "^5.5.0",
     "viem": "^2.25.0",
     "wagmi": "^2.14.16"
