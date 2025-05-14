@@ -1,13 +1,13 @@
 import { ethers } from "ethers";
 
-const marketContractABI = [
+const propertyContractABI = [
 	{
 		"anonymous": false,
 		"inputs": [
 			{
 				"indexed": true,
 				"internalType": "uint256",
-				"name": "assetId",
+				"name": "propertyId",
 				"type": "uint256"
 			},
 			{
@@ -19,13 +19,7 @@ const marketContractABI = [
 			{
 				"indexed": false,
 				"internalType": "string",
-				"name": "assetName",
-				"type": "string"
-			},
-			{
-				"indexed": false,
-				"internalType": "string",
-				"name": "category",
+				"name": "location",
 				"type": "string"
 			},
 			{
@@ -33,27 +27,9 @@ const marketContractABI = [
 				"internalType": "string",
 				"name": "price",
 				"type": "string"
-			},
-			{
-				"indexed": false,
-				"internalType": "string",
-				"name": "assetImage",
-				"type": "string"
-			},
-			{
-				"indexed": false,
-				"internalType": "string",
-				"name": "description",
-				"type": "string"
-			},
-			{
-				"indexed": false,
-				"internalType": "string",
-				"name": "royality",
-				"type": "string"
 			}
 		],
-		"name": "AssetAdded",
+		"name": "PropertyAdded",
 		"type": "event"
 	},
 	{
@@ -62,7 +38,7 @@ const marketContractABI = [
 			{
 				"indexed": true,
 				"internalType": "uint256",
-				"name": "assetId",
+				"name": "propertyId",
 				"type": "uint256"
 			},
 			{
@@ -76,15 +52,9 @@ const marketContractABI = [
 				"internalType": "address",
 				"name": "buyer",
 				"type": "address"
-			},
-			{
-				"indexed": false,
-				"internalType": "string",
-				"name": "price",
-				"type": "string"
 			}
 		],
-		"name": "AssetSold",
+		"name": "PropertyApproved",
 		"type": "event"
 	},
 	{
@@ -93,46 +63,58 @@ const marketContractABI = [
 			{
 				"indexed": true,
 				"internalType": "uint256",
-				"name": "assetId",
+				"name": "propertyId",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "buyer",
+				"type": "address"
+			}
+		],
+		"name": "PropertyRequested",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "propertyId",
 				"type": "uint256"
 			},
 			{
 				"indexed": false,
 				"internalType": "string",
-				"name": "ProfileStatus",
-				"type": "string"
-			},
-			{
-				"indexed": false,
-				"internalType": "string",
-				"name": "MarketStatus",
-				"type": "string"
-			},
-			{
-				"indexed": false,
-				"internalType": "string",
-				"name": "TransactionStatus",
+				"name": "propertyVerification",
 				"type": "string"
 			}
 		],
-		"name": "AssetStatusUpdated",
+		"name": "PropertyVerified",
 		"type": "event"
 	},
 	{
 		"inputs": [
 			{
 				"internalType": "string",
-				"name": "_assetName",
+				"name": "_landImage",
 				"type": "string"
 			},
 			{
 				"internalType": "string",
-				"name": "_category",
+				"name": "_location",
 				"type": "string"
 			},
 			{
 				"internalType": "string",
-				"name": "_assetImage",
+				"name": "_googleMapLink",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "_size",
 				"type": "string"
 			},
 			{
@@ -147,11 +129,31 @@ const marketContractABI = [
 			},
 			{
 				"internalType": "string",
-				"name": "_royality",
+				"name": "_landType",
 				"type": "string"
+			},
+			{
+				"internalType": "bool",
+				"name": "_saleDeed",
+				"type": "bool"
+			},
+			{
+				"internalType": "bool",
+				"name": "_clearanceCertificates",
+				"type": "bool"
+			},
+			{
+				"internalType": "bool",
+				"name": "_propertyTaxDocument",
+				"type": "bool"
+			},
+			{
+				"internalType": "bool",
+				"name": "_encumbranceCertificate",
+				"type": "bool"
 			}
 		],
-		"name": "addAsset",
+		"name": "addProperty",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
@@ -160,11 +162,11 @@ const marketContractABI = [
 		"inputs": [
 			{
 				"internalType": "uint256",
-				"name": "_indexId",
+				"name": "_propertyId",
 				"type": "uint256"
 			}
 		],
-		"name": "buyAsset",
+		"name": "approveBuy",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
@@ -173,49 +175,49 @@ const marketContractABI = [
 		"inputs": [
 			{
 				"internalType": "uint256",
-				"name": "_indexId",
+				"name": "_propertyId",
+				"type": "uint256"
+			}
+		],
+		"name": "requestToBuy",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_propertyId",
+				"type": "uint256"
+			}
+		],
+		"name": "sellProperty",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_propertyId",
 				"type": "uint256"
 			},
 			{
 				"internalType": "string",
-				"name": "_newPrice",
+				"name": "_verificationStatus",
 				"type": "string"
 			}
 		],
-		"name": "reSell",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "_indexId",
-				"type": "uint256"
-			}
-		],
-		"name": "sellAsset",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "_indexId",
-				"type": "uint256"
-			}
-		],
-		"name": "unlistAsset",
+		"name": "verifyProperty",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
 		"inputs": [],
-		"name": "viewAllAssets",
+		"name": "viewAll",
 		"outputs": [
 			{
 				"components": [
@@ -231,12 +233,22 @@ const marketContractABI = [
 					},
 					{
 						"internalType": "string",
-						"name": "assetName",
+						"name": "landImage",
 						"type": "string"
 					},
 					{
 						"internalType": "string",
-						"name": "category",
+						"name": "location",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "googleMapLink",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "size",
 						"type": "string"
 					},
 					{
@@ -246,7 +258,108 @@ const marketContractABI = [
 					},
 					{
 						"internalType": "string",
-						"name": "assetImage",
+						"name": "description",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "landType",
+						"type": "string"
+					},
+					{
+						"internalType": "bool",
+						"name": "saleDeed",
+						"type": "bool"
+					},
+					{
+						"internalType": "bool",
+						"name": "clearanceCertificates",
+						"type": "bool"
+					},
+					{
+						"internalType": "bool",
+						"name": "propertyTaxDocument",
+						"type": "bool"
+					},
+					{
+						"internalType": "bool",
+						"name": "encumbranceCertificate",
+						"type": "bool"
+					},
+					{
+						"internalType": "string",
+						"name": "propertyVerification",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "registrationRequest",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "marketStatus",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "transactionData",
+						"type": "string"
+					}
+				],
+				"internalType": "struct LandRegistry.Property[]",
+				"name": "",
+				"type": "tuple[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_propertyId",
+				"type": "uint256"
+			}
+		],
+		"name": "viewByIndex",
+		"outputs": [
+			{
+				"components": [
+					{
+						"internalType": "address",
+						"name": "seller",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "buyer",
+						"type": "address"
+					},
+					{
+						"internalType": "string",
+						"name": "landImage",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "location",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "googleMapLink",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "size",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "price",
 						"type": "string"
 					},
 					{
@@ -256,107 +369,148 @@ const marketContractABI = [
 					},
 					{
 						"internalType": "string",
-						"name": "royality",
+						"name": "landType",
+						"type": "string"
+					},
+					{
+						"internalType": "bool",
+						"name": "saleDeed",
+						"type": "bool"
+					},
+					{
+						"internalType": "bool",
+						"name": "clearanceCertificates",
+						"type": "bool"
+					},
+					{
+						"internalType": "bool",
+						"name": "propertyTaxDocument",
+						"type": "bool"
+					},
+					{
+						"internalType": "bool",
+						"name": "encumbranceCertificate",
+						"type": "bool"
+					},
+					{
+						"internalType": "string",
+						"name": "propertyVerification",
 						"type": "string"
 					},
 					{
 						"internalType": "string",
-						"name": "ProfileStatus",
+						"name": "registrationRequest",
 						"type": "string"
 					},
 					{
 						"internalType": "string",
-						"name": "MarketStatus",
+						"name": "marketStatus",
 						"type": "string"
 					},
 					{
 						"internalType": "string",
-						"name": "TransactionStatus",
+						"name": "transactionData",
 						"type": "string"
 					}
 				],
-				"internalType": "struct NFTMarketplace.Asset[]",
+				"internalType": "struct LandRegistry.Property",
 				"name": "",
-				"type": "tuple[]"
+				"type": "tuple"
 			}
 		],
 		"stateMutability": "view",
 		"type": "function"
 	}
-]
+];
 
-const marketContractAddress = "0x68704B89173E4Ef328c790352470B85307D20A28";
+const propertyContractAddress = "";
 
-const getMarketContract = () => {
-	if (!window.ethereum) {
-		throw new Error("MetaMask is not installed!");
-	}
-	const provider = new ethers.providers.Web3Provider(window.ethereum);
-	const signer = provider.getSigner();
-	return new ethers.Contract(marketContractAddress, marketContractABI, signer);
+const getPropertyContract = () => {
+  if (!window.ethereum) {
+    throw new Error("MetaMask is not installed!");
+  }
+  const provider = new ethers.providers.Web3Provider(window.ethereum);
+  const signer = provider.getSigner();
+  return new ethers.Contract(propertyContractAddress, propertyContractABI, signer);
 };
 
-export const addAsset = async (assetData) => {
-	const contract = getMarketContract();
-	const tx = await contract.addAsset(
-		assetData.assetName,
-		assetData.category,
-		assetData.assetImage,
-		assetData.price,
-		assetData.description,
-		assetData.royality
-	);
-	await tx.wait();
-	return tx;
+export const addProperty = async (propertyData) => {
+  const contract = getPropertyContract();
+  const tx = await contract.addProperty(
+    propertyData.seller,
+    propertyData.buyer,
+    propertyData.landImage,
+    propertyData.location,
+    propertyData.googleMapLink,
+    propertyData.size,
+    propertyData.price,
+    propertyData.description,
+    propertyData.landType,
+    propertyData.saleDeed,
+    propertyData.clearanceCertificates,
+    propertyData.propertyTaxDocument,
+    propertyData.encumbranceCertificate,
+    propertyData.propertyVerification,
+    propertyData.registrationRequest,
+    propertyData.marketStatus,
+    propertyData.transactionData
+  );
+  await tx.wait();
+  return tx;
 };
 
-export const viewAllAssets = async () => {
-	const contract = getMarketContract();
-	return await contract.viewAllAssets();
+export const verifyProperty = async (indexId) => {
+  const contract = getPropertyContract();
+  const tx = await contract.verifyProperty(indexId);
+  await tx.wait();
+  return tx;
 };
 
-export const sellAsset = async (indexId) => {
-	const contract = getMarketContract();
-	const tx = await contract.sellAsset(indexId);
-	await tx.wait();
-	return tx;
+export const sellProperty = async (indexId) => {
+  const contract = getPropertyContract();
+  const tx = await contract.sellProperty(indexId);
+  await tx.wait();
+  return tx;
 };
 
-export const buyAsset = async (indexId) => {
-	const contract = getMarketContract();
-	const tx = await contract.buyAsset(indexId);
-	await tx.wait();
-	return tx;
+export const requestToBuy = async (indexId) => {
+  const contract = getPropertyContract();
+  const tx = await contract.requestToBuy(indexId);
+  await tx.wait();
+  return tx;
 };
 
-export const unlistAsset = async (indexId) => {
-	const contract = getMarketContract();
-	const tx = await contract.unlistAsset(indexId);
-	await tx.wait();
-	return tx;
+export const approveBuy = async (indexId) => {
+  const contract = getPropertyContract();
+  const tx = await contract.approveBuy(indexId);
+  await tx.wait();
+  return tx;
 };
 
-export const reSellAsset = async (indexId, newPrice) => {
-	const contract = getMarketContract();
-	const tx = await contract.reSell(indexId, newPrice);
-	await tx.wait();
-	return tx;
+export const viewPropertyByIndex = async (indexId) => {
+  const contract = getPropertyContract();
+  return await contract.viewByIndex(indexId);
 };
 
-export const listenForAssetAdded = (callback) => {
-	const contract = getMarketContract();
-	contract.on("AssetAdded", callback);
-	return () => contract.off("AssetAdded", callback);
+export const viewAllProperties = async () => {
+  const contract = getPropertyContract();
+  return await contract.viewAll();
 };
 
-export const listenForAssetSold = (callback) => {
-	const contract = getMarketContract();
-	contract.on("AssetSold", callback);
-	return () => contract.off("AssetSold", callback);
+export const listenForPropertyAdded = (callback) => {
+  const contract = getPropertyContract();
+  contract.on("PropertyAdded", callback);
+  return () => contract.off("PropertyAdded", callback);
 };
 
-export const listenForStatusUpdates = (callback) => {
-	const contract = getMarketContract();
-	contract.on("AssetStatusUpdated", callback);
-	return () => contract.off("AssetStatusUpdated", callback);
-};	
+export const listenForPropertySold = (callback) => {
+  const contract = getPropertyContract();
+  contract.on("PropertySold", callback);
+  return () => contract.off("PropertySold", callback);
+};
+
+export const listenForVerificationUpdates = (callback) => {
+  const contract = getPropertyContract();
+  contract.on("PropertyVerified", callback);
+  return () => contract.off("PropertyVerified", callback);
+};

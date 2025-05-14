@@ -1,161 +1,129 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-contract NFTMarketplace {
-    struct Asset {
+contract LandRegistry {
+    struct Property {
         address seller;
         address buyer;
-        string assetName;
-        string category;
+        string landImage;
+        string location;
+        string googleMapLink;
+        string size;
         string price;
-        string assetImage;
         string description;
-        string royality;
-        string ProfileStatus;
-        string MarketStatus;
-        string TransactionStatus;
+        string landType;
+        bool saleDeed;
+        bool clearanceCertificates;
+        bool propertyTaxDocument;
+        bool encumbranceCertificate;
+        string propertyVerification;
+        string registrationRequest;
+        string marketStatus;
+        string transactionData;
     }
 
-    Asset[] private assets;
+    Property[] private properties;
 
-    event AssetAdded(
-        uint256 indexed assetId,
+    event PropertyAdded(
+        uint256 indexed propertyId,
         address indexed seller,
-        string assetName,
-        string category,
-        string price,
-        string assetImage,
-        string description,
-        string royality
-    );
-
-    event AssetSold(
-        uint256 indexed assetId,
-        address indexed seller,
-        address indexed buyer,
+        string location,
         string price
     );
 
-    event AssetStatusUpdated(
-        uint256 indexed assetId,
-        string ProfileStatus,
-        string MarketStatus,
-        string TransactionStatus
+    event PropertyVerified(
+        uint256 indexed propertyId,
+        string propertyVerification
     );
 
-    function addAsset(
-        string memory _assetName,
-        string memory _category,
-        string memory _assetImage,
+    event PropertyRequested(
+        uint256 indexed propertyId,
+        address indexed buyer
+    );
+
+    event PropertyApproved(
+        uint256 indexed propertyId,
+        address indexed seller,
+        address indexed buyer
+    );
+
+    function addProperty(
+        string memory _landImage,
+        string memory _location,
+        string memory _googleMapLink,
+        string memory _size,
         string memory _price,
         string memory _description,
-        string memory _royality
+        string memory _landType,
+        bool _saleDeed,
+        bool _clearanceCertificates,
+        bool _propertyTaxDocument,
+        bool _encumbranceCertificate
     ) public {
-        uint256 assetId = assets.length;
+        uint256 propertyId = properties.length;
 
-        assets.push(
-            Asset({
+        properties.push(
+            Property({
                 seller: msg.sender,
                 buyer: address(0),
-                assetName: _assetName,
-                category: _category,
+                landImage: _landImage,
+                location: _location,
+                googleMapLink: _googleMapLink,
+                size: _size,
                 price: _price,
-                assetImage: _assetImage,
                 description: _description,
-                royality: _royality,
-                ProfileStatus: "Active",
-                MarketStatus: "UnAvailable",
-                TransactionStatus: "NotCompleted"
+                landType: _landType,
+                saleDeed: _saleDeed,
+                clearanceCertificates: _clearanceCertificates,
+                propertyTaxDocument: _propertyTaxDocument,
+                encumbranceCertificate: _encumbranceCertificate,
+                propertyVerification: "pending",
+                registrationRequest: "pending",
+                marketStatus: "nonAvailable",
+                transactionData: "NotCompleted"
             })
         );
 
-        emit AssetAdded(
-            assetId,
-            msg.sender,
-            _assetName,
-            _category,
-            _price,
-            _assetImage,
-            _description,
-            _royality
-        );
+        emit PropertyAdded(propertyId, msg.sender, _location, _price);
     }
 
-    function sellAsset(uint256 _indexId) public {
-        require(_indexId < assets.length, "Asset does not exist");
-        require(assets[_indexId].seller == msg.sender, "Only seller can sell");
+    function verifyProperty(uint256 _propertyId, string memory _verificationStatus) public {
+        require(_propertyId < properties.length, "Property does not exist");
 
-        assets[_indexId].ProfileStatus = "Market";
-        assets[_indexId].MarketStatus = "Available";
+        properties[_propertyId].propertyVerification = _verificationStatus;
 
-        emit AssetStatusUpdated(
-            _indexId,
-            "Market",
-            "Available",
-            assets[_indexId].TransactionStatus
-        );
+        emit PropertyVerified(_propertyId, _verificationStatus);
     }
 
-    function buyAsset(uint256 _indexId) public {
-        require(_indexId < assets.length, "Asset does not exist");
-        assets[_indexId].buyer = msg.sender;
-        assets[_indexId].ProfileStatus = "Sold";
-        assets[_indexId].MarketStatus = "UnAvailable";
-        assets[_indexId].TransactionStatus = "Completed";
+    function sellProperty(uint256 _propertyId) public {
+        require(_propertyId < properties.length, "Property does not exist");
+        require(properties[_propertyId].seller == msg.sender, "Only seller can list property");
 
-        emit AssetSold(
-            _indexId,
-            assets[_indexId].seller,
-            msg.sender,
-            assets[_indexId].price
-        );
-
-        emit AssetStatusUpdated(_indexId, "Sold", "UnAvailable", "Completed");
+        properties[_propertyId].marketStatus = "available";
     }
 
-    function unlistAsset(uint256 _indexId) public {
-        require(_indexId < assets.length, "Asset does not exist");
-        require(
-            assets[_indexId].seller == msg.sender,
-            "Only seller can unlist"
-        );
+    function requestToBuy(uint256 _propertyId) public {
+        require(_propertyId < properties.length, "Property does not exist");
+        properties[_propertyId].registrationRequest = "pending";
+        properties[_propertyId].buyer = msg.sender;
+        properties[_propertyId].marketStatus = "nonAvailable";
 
-        assets[_indexId].ProfileStatus = "Active";
-        assets[_indexId].MarketStatus = "UnAvailable";
-
-        emit AssetStatusUpdated(
-            _indexId,
-            "Active",
-            "UnAvailable",
-            assets[_indexId].TransactionStatus
-        );
+        emit PropertyRequested(_propertyId, msg.sender);
     }
 
-    function reSell(uint256 _indexId, string memory _newPrice) public {
-        require(_indexId < assets.length, "Asset does not exist");
-        require(assets[_indexId].buyer == msg.sender, "Only buyer can resell");
-        require(
-            keccak256(bytes(assets[_indexId].ProfileStatus)) ==
-                keccak256(bytes("Sold")),
-            "Asset must be in Sold status"
-        );
+    function approveBuy(uint256 _propertyId) public {
+        require(_propertyId < properties.length, "Property does not exist");
+        properties[_propertyId].transactionData = "completed";
 
-        assets[_indexId].seller = msg.sender;
-        assets[_indexId].buyer = address(0);
-        assets[_indexId].price = _newPrice;
-        assets[_indexId].ProfileStatus = "Market";
-        assets[_indexId].MarketStatus = "Available";
-        assets[_indexId].TransactionStatus = "NotCompleted";
-
-        emit AssetStatusUpdated(
-            _indexId,
-            "Market",
-            "Available",
-            "NotCompleted"
-        );
+        emit PropertyApproved(_propertyId, properties[_propertyId].seller, properties[_propertyId].buyer);
     }
 
-    function viewAllAssets() public view returns (Asset[] memory) {
-        return assets;
+    function viewByIndex(uint256 _propertyId) public view returns (Property memory) {
+        require(_propertyId < properties.length, "Property does not exist");
+        return properties[_propertyId];
+    }
+
+    function viewAll() public view returns (Property[] memory) {
+        return properties;
     }
 }
