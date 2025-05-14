@@ -1,6 +1,82 @@
 import { ethers } from "ethers";
 
-const propertyContractABI = [
+const marketContractABI = [
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "_landImage",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "_location",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "_googleMapLink",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "_size",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "_price",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "_description",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "_landType",
+				"type": "string"
+			},
+			{
+				"internalType": "bool",
+				"name": "_saleDeed",
+				"type": "bool"
+			},
+			{
+				"internalType": "bool",
+				"name": "_clearanceCertificates",
+				"type": "bool"
+			},
+			{
+				"internalType": "bool",
+				"name": "_propertyTaxDocument",
+				"type": "bool"
+			},
+			{
+				"internalType": "bool",
+				"name": "_encumbranceCertificate",
+				"type": "bool"
+			}
+		],
+		"name": "addProperty",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_propertyId",
+				"type": "uint256"
+			}
+		],
+		"name": "approveBuy",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
 	{
 		"anonymous": false,
 		"inputs": [
@@ -94,82 +170,6 @@ const propertyContractABI = [
 		],
 		"name": "PropertyVerified",
 		"type": "event"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "string",
-				"name": "_landImage",
-				"type": "string"
-			},
-			{
-				"internalType": "string",
-				"name": "_location",
-				"type": "string"
-			},
-			{
-				"internalType": "string",
-				"name": "_googleMapLink",
-				"type": "string"
-			},
-			{
-				"internalType": "string",
-				"name": "_size",
-				"type": "string"
-			},
-			{
-				"internalType": "string",
-				"name": "_price",
-				"type": "string"
-			},
-			{
-				"internalType": "string",
-				"name": "_description",
-				"type": "string"
-			},
-			{
-				"internalType": "string",
-				"name": "_landType",
-				"type": "string"
-			},
-			{
-				"internalType": "bool",
-				"name": "_saleDeed",
-				"type": "bool"
-			},
-			{
-				"internalType": "bool",
-				"name": "_clearanceCertificates",
-				"type": "bool"
-			},
-			{
-				"internalType": "bool",
-				"name": "_propertyTaxDocument",
-				"type": "bool"
-			},
-			{
-				"internalType": "bool",
-				"name": "_encumbranceCertificate",
-				"type": "bool"
-			}
-		],
-		"name": "addProperty",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "_propertyId",
-				"type": "uint256"
-			}
-		],
-		"name": "approveBuy",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
 	},
 	{
 		"inputs": [
@@ -421,24 +421,22 @@ const propertyContractABI = [
 		"stateMutability": "view",
 		"type": "function"
 	}
-];
+]:
 
-const propertyContractAddress = "";
+const marketContractAddress = "0x599d490EEEB99d6eAE5396059671C45c6BAacFED"; 
 
-const getPropertyContract = () => {
+const getMarketContract = () => {
   if (!window.ethereum) {
     throw new Error("MetaMask is not installed!");
   }
   const provider = new ethers.providers.Web3Provider(window.ethereum);
   const signer = provider.getSigner();
-  return new ethers.Contract(propertyContractAddress, propertyContractABI, signer);
+  return new ethers.Contract(marketContractAddress, marketContractABI, signer);
 };
 
 export const addProperty = async (propertyData) => {
-  const contract = getPropertyContract();
+  const contract = getMarketContract();
   const tx = await contract.addProperty(
-    propertyData.seller,
-    propertyData.buyer,
     propertyData.landImage,
     propertyData.location,
     propertyData.googleMapLink,
@@ -449,68 +447,70 @@ export const addProperty = async (propertyData) => {
     propertyData.saleDeed,
     propertyData.clearanceCertificates,
     propertyData.propertyTaxDocument,
-    propertyData.encumbranceCertificate,
-    propertyData.propertyVerification,
-    propertyData.registrationRequest,
-    propertyData.marketStatus,
-    propertyData.transactionData
+    propertyData.encumbranceCertificate
   );
   await tx.wait();
   return tx;
 };
 
-export const verifyProperty = async (indexId) => {
-  const contract = getPropertyContract();
-  const tx = await contract.verifyProperty(indexId);
+export const verifyProperty = async (propertyId, verificationStatus) => {
+  const contract = getMarketContract();
+  const tx = await contract.verifyProperty(propertyId, verificationStatus);
   await tx.wait();
   return tx;
 };
 
-export const sellProperty = async (indexId) => {
-  const contract = getPropertyContract();
-  const tx = await contract.sellProperty(indexId);
+export const sellProperty = async (propertyId) => {
+  const contract = getMarketContract();
+  const tx = await contract.sellProperty(propertyId);
   await tx.wait();
   return tx;
 };
 
-export const requestToBuy = async (indexId) => {
-  const contract = getPropertyContract();
-  const tx = await contract.requestToBuy(indexId);
+export const requestToBuy = async (propertyId) => {
+  const contract = getMarketContract();
+  const tx = await contract.requestToBuy(propertyId);
   await tx.wait();
   return tx;
 };
 
-export const approveBuy = async (indexId) => {
-  const contract = getPropertyContract();
-  const tx = await contract.approveBuy(indexId);
+export const approveBuy = async (propertyId) => {
+  const contract = getMarketContract();
+  const tx = await contract.approveBuy(propertyId);
   await tx.wait();
   return tx;
 };
 
-export const viewPropertyByIndex = async (indexId) => {
-  const contract = getPropertyContract();
-  return await contract.viewByIndex(indexId);
+export const viewByIndex = async (propertyId) => {
+  const contract = getMarketContract();
+  return await contract.viewByIndex(propertyId);
 };
 
-export const viewAllProperties = async () => {
-  const contract = getPropertyContract();
+export const viewAll = async () => {
+  const contract = getMarketContract();
   return await contract.viewAll();
 };
 
 export const listenForPropertyAdded = (callback) => {
-  const contract = getPropertyContract();
+  const contract = getMarketContract();
   contract.on("PropertyAdded", callback);
   return () => contract.off("PropertyAdded", callback);
 };
 
-export const listenForPropertySold = (callback) => {
-  const contract = getPropertyContract();
-  contract.on("PropertySold", callback);
-  return () => contract.off("PropertySold", callback);
-};
-
-export const listenForVerificationUpdates = (callback) => {
-  const contract = getPropertyContract();
+export const listenForPropertyVerified = (callback) => {
+  const contract = getMarketContract();
   contract.on("PropertyVerified", callback);
   return () => contract.off("PropertyVerified", callback);
+};
+
+export const listenForPropertyRequested = (callback) => {
+  const contract = getMarketContract();
+  contract.on("PropertyRequested", callback);
+  return () => contract.off("PropertyRequested", callback);
+};
+
+export const listenForPropertyApproved = (callback) => {
+  const contract = getMarketContract();
+  contract.on("PropertyApproved", callback);
+  return () => contract.off("PropertyApproved", callback);
 };

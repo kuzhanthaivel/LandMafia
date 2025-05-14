@@ -105,15 +105,15 @@ contract LandRegistry {
     function requestToBuy(uint256 _propertyId) public {
         require(_propertyId < properties.length, "Property does not exist");
         properties[_propertyId].registrationRequest = "pending";
-        properties[_propertyId].buyer = msg.sender;
         properties[_propertyId].marketStatus = "nonAvailable";
-
+        properties[_propertyId].buyer = msg.sender;
         emit PropertyRequested(_propertyId, msg.sender);
     }
 
     function approveBuy(uint256 _propertyId) public {
         require(_propertyId < properties.length, "Property does not exist");
         properties[_propertyId].transactionData = "completed";
+        properties[_propertyId].registrationRequest = "approved";
 
         emit PropertyApproved(_propertyId, properties[_propertyId].seller, properties[_propertyId].buyer);
     }
@@ -127,3 +127,4 @@ contract LandRegistry {
         return properties;
     }
 }
+    
