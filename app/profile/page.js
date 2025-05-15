@@ -65,13 +65,14 @@ export default function Profile() {
     setLoading(true);
     try {
       const allProperties = await viewAll();
-      const userProperties = allProperties.filter(property =>
-        property.seller.toLowerCase() === account.toLowerCase() ||
-        (property.buyer && property.buyer.toLowerCase() === account.toLowerCase())
-      );
-
-      const formattedProperties = userProperties.map((prop, index) => ({
-        id: index,
+      const userProperties = allProperties
+        .map((prop, index) => ({ ...prop, originalIndex: index })) 
+        .filter(property =>
+          property.seller.toLowerCase() === account.toLowerCase() ||
+          (property.buyer && property.buyer.toLowerCase() === account.toLowerCase())
+        );
+      const formattedProperties = userProperties.map((prop) => ({
+        id: prop.originalIndex,
         seller: prop.seller,
         buyer: prop.buyer,
         landImage: prop.landImage || "/placeholder-property.jpg",
@@ -98,7 +99,7 @@ export default function Profile() {
       const userTransactions = userProperties
         .filter(prop => prop.transactionData === "completed")
         .map(prop => ({
-          id: prop.id,
+          id: prop.originalIndex,
           propertyName: `${prop.landType} in ${prop.location}`,
           amount: prop.price,
           counterparty: prop.seller.toLowerCase() === account.toLowerCase() ?
