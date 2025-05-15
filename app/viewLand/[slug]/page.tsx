@@ -24,7 +24,6 @@ export default function ViewLand({ params }) {
   const slug = params.slug;
   const [land, setLand] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchLandData = async () => {
@@ -61,7 +60,6 @@ export default function ViewLand({ params }) {
         setLand(formattedLand);
       } catch (err) {
         console.error("Error fetching land data:", err);
-        setError(err.message);
       } finally {
         setLoading(false);
       }

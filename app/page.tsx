@@ -131,7 +131,7 @@ export default function LandingPage() {
                 }`}
               >
                 <Users className="inline mr-2 h-4 w-4" />
-                I'm Buying
+                I am Buying
               </button>
               <button
                 onClick={() => setActiveTab("seller")}
@@ -142,7 +142,7 @@ export default function LandingPage() {
                 }`}
               >
                 <Building className="inline mr-2 h-4 w-4" />
-                I'm Selling
+                I am Selling
               </button>
             </div>
 

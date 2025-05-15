@@ -77,7 +77,7 @@ export default function UploadLand() {
   const taxDocRef = useRef(null);
 
   useEffect(() => {
-    const unsubscribe = listenForPropertyAdded((propertyId, seller, location, price) => {
+    const unsubscribe = listenForPropertyAdded((propertyId, seller) => {
       if (seller.toLowerCase() === account?.toLowerCase()) {
         setUploadStatus(`Property successfully registered on blockchain! Property ID: ${propertyId.toString()}`);
         setIsUploading(false);
