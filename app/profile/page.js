@@ -7,8 +7,15 @@ import { Outfit } from 'next/font/google';
 import { FiFilter, FiSearch, FiChevronDown, FiX } from "react-icons/fi";
 import { useState, useEffect } from "react";
 import { useWallet } from "@/context/WalletContext";
-import dummyProperties from "../../utils/testData";
 import { useRouter } from "next/navigation";
+import {
+  viewAll,
+  sellProperty,
+  listenForPropertyAdded,
+  listenForPropertyVerified,
+  listenForPropertyRequested,
+  listenForPropertyApproved
+} from "../../utils/contractintegration/Contract";
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -35,57 +42,109 @@ export default function Profile() {
   const [transactions, setTransactions] = useState([]);
   const [filteredTransactions, setFilteredTransactions] = useState([]);
   const [loading, setLoading] = useState(false);
-  const allLandTypes = [...new Set(dummyProperties.map(item => item.landType))];
-  const allStatuses = ["available", "nonAvailable"];
   const router = useRouter();
+
   const handleViewLand = (landId) => {
     router.push(`/viewLand/${landId}`);
-    };
+  };
 
-  useEffect(() => {
-    if (isConnected && account) {
-      setLoading(true);
-      const userProperties = dummyProperties.filter(property =>
+  const handleSellProperty = async (propertyId) => {
+    try {
+      await sellProperty(propertyId);
+      await fetchUserProperties();
+    } catch (error) {
+      console.error("Error selling property:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUserProperties = async () => {
+    if (!account) return;
+
+    setLoading(true);
+    try {
+      const allProperties = await viewAll();
+      const userProperties = allProperties.filter(property =>
         property.seller.toLowerCase() === account.toLowerCase() ||
-        property.buyer.toLowerCase() === account.toLowerCase()
+        (property.buyer && property.buyer.toLowerCase() === account.toLowerCase())
       );
 
-      setProperties(userProperties);
-      setFilteredProperties(userProperties);
+      const formattedProperties = userProperties.map((prop, index) => ({
+        id: index,
+        seller: prop.seller,
+        buyer: prop.buyer,
+        landImage: prop.landImage || "/placeholder-property.jpg",
+        location: prop.location,
+        googleMapLink: prop.googleMapLink,
+        size: prop.size,
+        price: prop.price,
+        description: prop.description,
+        landType: prop.landType,
+        saleDeed: prop.saleDeed,
+        clearanceCertificates: prop.clearanceCertificates,
+        propertyTaxDocument: prop.propertyTaxDocument,
+        encumbranceCertificate: prop.encumbranceCertificate,
+        propertyVerification: prop.propertyVerification || "pending",
+        registrationRequest: prop.registrationRequest || "pending",
+        marketStatus: prop.marketStatus || "available",
+        transactionData: prop.transactionData || "pending",
+        createdAt: new Date().toISOString()
+      }));
 
-      const userTransactions = dummyProperties
-        .filter(property =>
-          (property.seller.toLowerCase() === account.toLowerCase() ||
-            property.buyer.toLowerCase() === account.toLowerCase()) &&
-          property.transactionData === "completed"
-        )
-        .map(property => ({
-          id: property.id,
-          propertyName: `${property.landType} in ${property.location}`,
-          amount: property.price,
-          counterparty: property.seller.toLowerCase() === account.toLowerCase() ?
-            property.buyer : property.seller,
-          type: property.seller.toLowerCase() === account.toLowerCase() ? "Sell" : "Buy",
-          date: property.createdAt,
-          status: property.registrationRequest
+      setProperties(formattedProperties);
+      setFilteredProperties(formattedProperties);
+
+      const userTransactions = userProperties
+        .filter(prop => prop.transactionData === "completed")
+        .map(prop => ({
+          id: prop.id,
+          propertyName: `${prop.landType} in ${prop.location}`,
+          amount: prop.price,
+          counterparty: prop.seller.toLowerCase() === account.toLowerCase() ?
+            prop.buyer : prop.seller,
+          type: prop.seller.toLowerCase() === account.toLowerCase() ? "Sell" : "Buy",
+          date: prop.createdAt,
+          status: prop.registrationRequest
         }));
 
       setTransactions(userTransactions);
       setFilteredTransactions(userTransactions);
+    } catch (error) {
+      console.error("Error fetching properties:", error);
+    } finally {
       setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isConnected && account) {
+      fetchUserProperties();
+
+      const cleanUpAdded = listenForPropertyAdded(() => fetchUserProperties());
+      const cleanUpVerified = listenForPropertyVerified(() => fetchUserProperties());
+      const cleanUpRequested = listenForPropertyRequested(() => fetchUserProperties());
+      const cleanUpApproved = listenForPropertyApproved(() => fetchUserProperties());
+
+      return () => {
+        cleanUpAdded();
+        cleanUpVerified();
+        cleanUpRequested();
+        cleanUpApproved();
+      };
     }
   }, [isConnected, account]);
 
   useEffect(() => {
     let result = properties.filter(property =>
       property.seller.toLowerCase() === account?.toLowerCase() ||
-      property.buyer.toLowerCase() === account?.toLowerCase()
+      (property.buyer && property.buyer.toLowerCase() === account?.toLowerCase())
     );
 
     if (searchTerm) {
       result = result.filter(property =>
         property.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        property.discribtion.toLowerCase().includes(searchTerm.toLowerCase())
+        property.description.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
     if (filters.landType.length > 0) {
@@ -93,8 +152,16 @@ export default function Profile() {
     }
 
     if (filters.status.length > 0) {
-      result = result.filter(property => filters.status.includes(property.marketStatus));
-    }                                      
+      result = result.filter(property => {
+        if (filters.status.includes("available")) {
+          return property.marketStatus === "available";
+        }
+        if (filters.status.includes("nonAvailable")) {
+          return property.marketStatus !== "available";
+        }
+        return true;
+      });
+    }
     setFilteredProperties(result);
   }, [searchTerm, filters, properties, account]);
 
@@ -129,6 +196,9 @@ export default function Profile() {
     });
     setSearchTerm("");
   };
+
+  const allLandTypes = [...new Set(properties.map(item => item.landType))];
+  const allStatuses = ["available", "nonAvailable"];
 
   if (!isConnected) {
     return (
@@ -203,7 +273,7 @@ export default function Profile() {
                     <div className="flex justify-between items-center mb-3">
                       <h3 className="font-semibold">Filters</h3>
                       <button
-                        className="text-sm text-[#77227F] hover:[#77227F]"
+                        className="text-sm text-[#77227F] hover:text-[#77227F]"
                         onClick={clearFilters}
                       >
                         Clear all
@@ -286,7 +356,7 @@ export default function Profile() {
               <p className="text-gray-400 text-sm">Total Value</p>
               <p className="text-2xl font-bold">
                 {filteredProperties.reduce((sum, item) => {
-                  const price = parseFloat(item.price.replace(/[^0-9]/g, ''));
+                  const price = parseFloat(item.price.replace(/[^0-9.-]+/g, ""));
                   return sum + (isNaN(price) ? 0 : price)
                 }, 0).toLocaleString('en-IN', {
                   style: 'currency',
@@ -300,10 +370,10 @@ export default function Profile() {
               <p className="text-2xl font-bold">
                 {filteredProperties.length > 0
                   ? filteredProperties.reduce((max, item) => {
-                    const currentPrice = parseFloat(item.price.replace(/[^0-9]/g, ''));
-                    const maxPrice = parseFloat(max.price.replace(/[^0-9]/g, ''));
+                    const currentPrice = parseFloat(item.price.replace(/[^0-9.-]+/g, ""));
+                    const maxPrice = parseFloat(max.price.replace(/[^0-9.-]+/g, ""));
                     return currentPrice > maxPrice ? item : max;
-                  }).location
+                  }, filteredProperties[0]).location
                   : "N/A"}
               </p>
             </div>
@@ -313,17 +383,16 @@ export default function Profile() {
             {filteredProperties.map((property) => (
               <div
                 key={property.id}
-                                  onClick={() => handleViewLand(property.id)}
-                className="border rounded-lg shadow-lg text-[#6D737A] font-sans space-y-3 px-3 py-4 w-full max-w-xs bg-white/10 backdrop-blur-md border-white/10 hover:border-[#77227F] transition-colors relative"
+                onClick={() => handleViewLand(property.id)}
+                className="border rounded-lg shadow-lg text-[#6D737A] font-sans space-y-3 px-3 py-4 w-full max-w-xs bg-white/10 backdrop-blur-md border-white/10 hover:border-[#77227F] transition-colors relative cursor-pointer"
               >
                 <div className="relative bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg flex items-center justify-center w-full h-48">
                   <Image
-                    src={property.landimage}
+                    src={property.landImage}
                     alt={property.location}
                     fill
                     className="object-cover rounded-lg"
                     onError={(e) => {
-                      console.error("Error loading image:", property.landimage);
                       e.target.onerror = null;
                       e.target.src = "/placeholder-property.jpg";
                     }}
@@ -333,7 +402,7 @@ export default function Profile() {
                   <h3 className="font-semibold text-white text-lg">
                     {property.landType} in {property.location}
                   </h3>
-                  <p className="text-sm text-gray-400 line-clamp-2">{property.discribtion}</p>
+                  <p className="text-sm text-gray-400 line-clamp-2">{property.description}</p>
                 </div>
 
                 <div className="flex justify-between items-center">
@@ -352,10 +421,10 @@ export default function Profile() {
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col">
                     <span className="text-xs text-gray-400">Price</span>
-                    <span className="font-semibold text-white">{property.price}</span>
+                    <span className="font-semibold text-white">₹ {property.price}</span>
                   </div>
-                  <div className={`text-xs px-2 py-1 rounded flex items-center ${property.marketStatus === "available" ? "bg-green-900/90 text-white" : "bg-purple-900/90 text-white"}`}>
-                    {property.propertyVerification === "approved" ? "Approved" : <>{property.propertyVerification === "rejected" ? "Fake" : "Pending"} </>}
+                  <div className={`text-xs px-2 py-1 rounded flex items-center ${property.propertyVerification === "approved" ? "bg-green-900/90 text-white" : property.propertyVerification === "rejected" ? "bg-red-900/90 text-white" : "bg-yellow-600/90 text-white"}`}>
+                    {property.propertyVerification === "approved" ? "Approved" : property.propertyVerification === "rejected" ? "Rejected" : "Pending"}
                   </div>
                 </div>
 
@@ -371,12 +440,24 @@ export default function Profile() {
                     ) : (
                       <>
                         {property.propertyVerification === "approved" ? (
-                          <button
-                            className="w-full mt-3 bg-[#77227F] hover:bg-[#77227F] text-white py-2 rounded-md font-medium transition-colors"
-                            onClick={() => console.log("Sell property", property.id)}
-                          >
-                            Sell
-                          </button>
+                          property.marketStatus === "available" ? (
+                            <button
+                              className="w-full mt-3 bg-green-600 text-white py-2 rounded-md font-medium cursor-not-allowed"
+                              disabled
+                            >
+                              In Market
+                            </button>
+                          ) : (
+                            <button
+                              className="w-full mt-3 bg-[#77227F] hover:bg-[#77227F] text-white py-2 rounded-md font-medium transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSellProperty(property.id);
+                              }}
+                            >
+                              Sell
+                            </button>
+                          )
                         ) : property.propertyVerification === "rejected" ? (
                           <button
                             className="w-full mt-3 bg-red-600 text-white py-2 rounded-md font-medium cursor-not-allowed"
@@ -397,7 +478,7 @@ export default function Profile() {
                   </>
                 )}
 
-                {property.buyer.toLowerCase() === account.toLowerCase() && (
+                {property.buyer && property.buyer.toLowerCase() === account.toLowerCase() && (
                   <div className="flex flex-col gap-2 mt-3">
                     <div className={`absolute -top-2 -left-2 text-xs px-2 py-1 rounded text-center ${property.registrationRequest === "approved" ? "bg-green-900/90 text-white" : "bg-yellow-600/90 text-white"}`}>
                       Registration: {property.registrationRequest === "approved" ? "Approved" : "Pending"}
@@ -467,7 +548,6 @@ export default function Profile() {
           </div>
         </div>
       </div>
-
       <Footer />
     </div>
   );

@@ -4,11 +4,17 @@ import Header from "../../components/header";
 import Footer from "../../components/footer";
 import { Outfit } from "next/font/google";
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useWallet } from "@/context/WalletContext";
 import { useRouter } from "next/navigation";
-import DummyImage from '../../assets/Bg.jpg'
-import dummyProperties from "@/utils/testData";
+import DummyImage from "../../assets/Bg.jpg";
+import {
+  viewAll,
+  requestToBuy,
+  listenForPropertyAdded,
+  listenForPropertyRequested,
+  listenForPropertyApproved,
+} from "../../utils/contractintegration/Contract";
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -19,68 +25,139 @@ export default function LandMarketplace() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLandType, setSelectedLandType] = useState("All Types");
   const [selectedLocation, setSelectedLocation] = useState("All Locations");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [properties, setProperties] = useState([]);
+  const [error, setError] = useState(null);
   const router = useRouter();
 
-  const {
-    isConnected,
-    account,
-    connectWallet,
-    disconnectWallet,
-    shortenAddress,
-  } = useWallet();
+  const { isConnected, account } = useWallet();
 
-  // Filter properties that are available in the market
-  const availableProperties = dummyProperties.filter(
-    (property) => property.marketStatus === "available"
+  useEffect(() => {
+    fetchProperties();
+
+    const unsubscribeAdded = listenForPropertyAdded(() => {
+      fetchProperties();
+    });
+
+    const unsubscribeRequested = listenForPropertyRequested(
+      (propertyId, buyer) => {
+        if (buyer.toLowerCase() === account?.toLowerCase()) {
+          console.log("listenForPropertyRequested");
+        }
+      }
+    );
+
+    const unsubscribeApproved = listenForPropertyApproved(
+      (propertyId, seller, buyer) => {
+        if (buyer.toLowerCase() === account?.toLowerCase()) {
+          fetchProperties();
+        }
+      }
+    );
+
+    return () => {
+      unsubscribeAdded();
+      unsubscribeRequested();
+      unsubscribeApproved();
+    };
+  }, [account]);
+
+  const fetchProperties = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const allProperties = await viewAll();
+
+      const availableProperties = allProperties
+        .map((prop, index) => ({
+          ...prop,
+          id: index,
+          price: formatPrice(prop.price),
+        }))
+        .filter((property) => property.marketStatus === "available");
+
+      setProperties(availableProperties);
+    } catch (err) {
+      console.error("Error fetching properties:", err);
+      setError("Failed to load properties. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatPrice = (price) => {
+    if (typeof price === "string") return price;
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      minimumFractionDigits: 0,
+    }).format(price);
+  };
+
+  const allLandTypes = useMemo(
+    () => [
+      "All Types",
+      ...new Set(properties.map((property) => property.landType)),
+    ],
+    [properties]
   );
 
-  // Get all unique land types from the data
-  const allLandTypes = [
-    "All Types",
-    ...new Set(availableProperties.map((property) => property.landType)),
-  ];
+  const allLocations = useMemo(
+    () => [
+      "All Locations",
+      ...new Set(properties.map((property) => property.location)),
+    ],
+    [properties]
+  );
 
-  // Get all unique locations from the data
-  const allLocations = [
-    "All Locations",
-    ...new Set(availableProperties.map((property) => property.location)),
-  ];
+  const filteredLands = useMemo(() => {
+    return properties.filter((property) => {
+      const matchesSearch =
+        searchTerm === "" ||
+        property.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        property.description.toLowerCase().includes(searchTerm.toLowerCase());
 
-  const filteredLands = availableProperties.filter((property) => {
-    // Search term filter
-    const matchesSearch =
-      property.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      property.discribtion.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesLandType =
+        selectedLandType === "All Types" ||
+        property.landType === selectedLandType;
 
-    // Land type filter
-    const matchesLandType =
-      selectedLandType === "All Types" ||
-      property.landType === selectedLandType;
+      const matchesLocation =
+        selectedLocation === "All Locations" ||
+        property.location === selectedLocation;
 
-    // Location filter
-    const matchesLocation =
-      selectedLocation === "All Locations" ||
-      property.location === selectedLocation;
+      return matchesSearch && matchesLandType && matchesLocation;
+    });
+  }, [properties, searchTerm, selectedLandType, selectedLocation]);
 
-    return matchesSearch && matchesLandType && matchesLocation;
-  });
+  const handleBuyLand = async (propertyIndex, e) => {
+    e.stopPropagation();
 
-  const handleBuyLand = (landId) => {
     if (!isConnected) {
       alert("Please connect your wallet to purchase land");
       return;
     }
-    alert(`Initiating purchase for land ID: ${landId}`);
-    // Here you would typically call your contract function
+
+    try {
+      const property = filteredLands.find((p) => p.id === propertyIndex);
+      if (!property) throw new Error("Property not found");
+      const tx = await requestToBuy(propertyIndex);
+      await tx.wait();
+    } catch (err) {
+      console.error("Error requesting to buy:", err);
+      alert(`Error: ${err.message.split("(")[0]}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleViewLand = (landId) => {
-  router.push(`/viewLand/${landId}`);
+  const handleViewLand = (propertyId) => {
+    router.push(`/viewLand/${propertyId}`);
   };
 
   return (
-    <div className={`${outfit.className} text-white min-h-screen flex flex-col`}>
+    <div
+      className={`${outfit.className} text-white min-h-screen flex flex-col`}
+    >
       <div className="flex-grow">
         <Header />
 
@@ -98,7 +175,12 @@ export default function LandMarketplace() {
             </div>
           </div>
 
-          {/* Filters */}
+          {error && (
+            <div className="bg-red-900/90 text-white p-3 rounded-lg mb-4 text-center">
+              {error}
+            </div>
+          )}
+
           <div className="flex flex-col sm:flex-row gap-4 mb-8 justify-center">
             <div className="relative">
               <select
@@ -113,11 +195,7 @@ export default function LandMarketplace() {
                 ))}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
-                <svg
-                  className="fill-current h-4 w-4"
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 20 20"
-                >
+                <svg className="fill-current h-4 w-4" viewBox="0 0 20 20">
                   <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
                 </svg>
               </div>
@@ -136,11 +214,7 @@ export default function LandMarketplace() {
                 ))}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
-                <svg
-                  className="fill-current h-4 w-4"
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 20 20"
-                >
+                <svg className="fill-current h-4 w-4" viewBox="0 0 20 20">
                   <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
                 </svg>
               </div>
@@ -149,11 +223,18 @@ export default function LandMarketplace() {
         </section>
 
         <section className="px-4 sm:px-8 lg:px-24 py-10 relative z-10">
-          {filteredLands.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-20">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#77227F]"></div>
+              <p className="mt-4">Loading properties...</p>
+            </div>
+          ) : filteredLands.length === 0 ? (
             <div className="text-center py-20">
               <h3 className="text-2xl font-bold mb-4">No lands found</h3>
               <p className="text-[#6D737A]">
-                Try adjusting your search or filters
+                {properties.length === 0
+                  ? "No properties available in the marketplace"
+                  : "Try adjusting your search or filters"}
               </p>
             </div>
           ) : (
@@ -166,8 +247,8 @@ export default function LandMarketplace() {
                 >
                   <div className="relative h-48 w-full rounded-lg overflow-hidden">
                     <Image
-                      src={land.landimage || DummyImage}
-                      alt={land.location}
+                      src={land.landImage || DummyImage}
+                      alt={`${land.landType} in ${land.location}`}
                       fill
                       className="object-cover"
                       onError={(e) => {
@@ -186,7 +267,7 @@ export default function LandMarketplace() {
                       <span>{land.location}</span>
                     </div>
                     <p className="text-sm text-gray-400 mt-2 line-clamp-2">
-                      {land.discribtion}
+                      {land.description}
                     </p>
                     <div className="flex justify-between items-center mt-3">
                       <div>
@@ -208,17 +289,17 @@ export default function LandMarketplace() {
                     <div className="flex flex-col">
                       <span className="text-xs text-gray-500">Price</span>
                       <span className="font-semibold text-white text-lg">
-                        {land.price}
+                        ₹ {land.price}
                       </span>
                     </div>
                     <button
-                      className="bg-[#77227F] hover:bg-[#8a2d92] text-white text-sm px-4 py-2 rounded-md font-semibold transition-colors"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleBuyLand(land.id);
-                      }}
+                      className={`bg-[#77227F] hover:bg-[#8a2d92] text-white text-sm px-4 py-2 rounded-md font-semibold transition-colors ${
+                        loading ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
+                      onClick={(e) => handleBuyLand(land.id, e)}
+                      disabled={loading}
                     >
-                      Buy
+                      {loading ? "Processing..." : "Buy"}
                     </button>
                   </div>
                 </div>
@@ -227,7 +308,6 @@ export default function LandMarketplace() {
           )}
         </section>
       </div>
-
       <Footer />
     </div>
   );

@@ -18,7 +18,9 @@ export default function Footer() {
               <Image src={logo} alt={logo} className="w-40" />
             </div>
             <p className="text-gray-400 text-sm max-w-xs">
-Secure, transparent land ownership records powered by blockchain technology. Register, verify, and transfer property with complete trust.
+              Secure, transparent land ownership records powered by blockchain
+              technology. Register, verify, and transfer property with complete
+              trust.
             </p>
             <div className="flex space-x-3 text-lg">
               <Link href="#" className="hover:text-[#77227F]">

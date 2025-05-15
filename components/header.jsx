@@ -101,32 +101,37 @@ export default function Header() {
         </ul>
       </nav>
 
-<div className=" flex justify-center items-center gap-4 ">
+      <div className=" flex justify-center items-center gap-4 ">
         <div
-        className={`${
-          isMenuOpen ? "block mt-4 w-full" : "hidden"
-        } md:block md:mt-0 md:w-auto`}
-      >
-        {isConnected ? (
-          <div className="flex justify-center md:justify-end">
+          className={`${
+            isMenuOpen ? "block mt-4 w-full" : "hidden"
+          } md:block md:mt-0 md:w-auto`}
+        >
+          {isConnected ? (
+            <div className="flex justify-center md:justify-end">
+              <button
+                onClick={disconnectWallet}
+                className="bg-[#77227F] hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm transition w-full md:w-36"
+              >
+                <span>{shortenAddress(account)}</span>
+              </button>
+            </div>
+          ) : (
             <button
-              onClick={disconnectWallet}
-              className="bg-[#77227F] hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm transition w-full md:w-36"
+              onClick={connectWallet}
+              className="bg-[#77227F] hover:[#77227F] text-white px-4 py-2 rounded-lg text-sm transition w-full md:w-36"
             >
-              <span>{shortenAddress(account)}</span>
+              Connect Wallet
             </button>
-          </div>
-        ) : (
-          <button
-            onClick={connectWallet}
-            className="bg-[#77227F] hover:[#77227F] text-white px-4 py-2 rounded-lg text-sm transition w-full md:w-36"
-          >
-            Connect Wallet
-          </button>
-        )}
+          )}
+        </div>
+        <Link
+          href="/Admin "
+          className="w-2 h-2 bg-[#77227F] items-end rounded-full"
+        >
+          {" "}
+        </Link>
       </div>
-     <Link href='/Admin ' className="w-2 h-2 bg-[#77227F] items-end rounded-full"> </Link>
-</div>
     </header>
   );
 }

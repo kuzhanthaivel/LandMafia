@@ -1,14 +1,21 @@
 "use client";
 import { FaMapMarkerAlt } from "react-icons/fa";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useWallet } from "@/context/WalletContext";
 import { useRouter } from "next/navigation";
 import Header from "../../components/header";
 import Footer from "../../components/footer";
 import { Outfit } from "next/font/google";
-import dummyProperties from "@/utils/testData";
-import Image from "next/image";
-import DummyImage from '../../assets/Bg.jpg'
+import {
+    viewAll,
+    verifyProperty,
+    approveBuy,
+    listenForPropertyAdded,
+    listenForPropertyVerified,
+    listenForPropertyRequested,
+    listenForPropertyApproved
+} from "@/utils/contractintegration/Contract";
+
 const outfit = Outfit({
     subsets: ["latin"],
     weight: "400",
@@ -18,43 +25,91 @@ export default function AdminDashboard() {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState("verification");
     const [loading, setLoading] = useState(false);
+    const [properties, setProperties] = useState([]);
+    const [refresh, setRefresh] = useState(false);
+
+    const {
+        account
+    } = useWallet();
+
+    const isAdmin = account?.toLowerCase() === process.env.NEXT_PUBLIC_ADMIN?.toLowerCase();
+    useEffect(() => {
+        const fetchProperties = async () => {
+            if (!isAdmin) return;
+
+            try {
+                setLoading(true);
+                const allProperties = await viewAll();
+                setProperties(allProperties);
+            } catch (error) {
+                console.error("Error fetching properties:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchProperties();
+
+        const cleanups = [
+            listenForPropertyAdded(() => setRefresh(prev => !prev)),
+            listenForPropertyVerified(() => setRefresh(prev => !prev)),
+            listenForPropertyRequested(() => setRefresh(prev => !prev)),
+            listenForPropertyApproved(() => setRefresh(prev => !prev))
+        ];
+
+        return () => cleanups.forEach(cleanup => cleanup());
+    }, [isAdmin, refresh]);
 
     const handleViewLand = (landId) => {
         router.push(`/viewLand/${landId}`);
     };
 
-    const {
-        isConnected,
-        account,
-        connectWallet,
-        disconnectWallet,
-        shortenAddress,
-    } = useWallet();
-
-    const isAdmin = account?.toLowerCase() === process.env.NEXT_PUBLIC_ADMIN?.toLowerCase();
-
-    const verificationRequests = dummyProperties.filter(
+    const verificationRequests = properties.filter(
         (property) =>
-            property.propertyVerification === "pending" &&
-            !property.buyer
+            property.propertyVerification === "pending"
     );
 
-    const buyRequests = dummyProperties.filter(
+    const buyRequests = properties.filter(
         (property) =>
-            property.registrationRequest === "pending" && property.propertyVerification === "approved" &&
+            property.registrationRequest === "pending" &&
+            property.propertyVerification === "approved" &&
             property.buyer
     );
 
-    const handleApproveVerification = (propertyId) => {
-        alert(`Approving verification for property ${propertyId}`);
+    const handleApproveVerification = async (propertyId) => {
+        try {
+            setLoading(true);
+            await verifyProperty(propertyId, "approved");
+        } catch (error) {
+            console.error("Error approving verification:", error);
+            alert("Failed to approve verification");
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleRejectVerification = (propertyId) => {
-        alert(`Rejecting verification for property ${propertyId}`);
+    const handleRejectVerification = async (propertyId) => {
+        try {
+            setLoading(true);
+            await verifyProperty(propertyId, "rejected");
+        } catch (error) {
+            console.error("Error rejecting verification:", error);
+            alert("Failed to reject verification");
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleApproveBuyRequest = (propertyId) => {
-        alert(`Approving buy request for property ${propertyId}`);
+    const handleApproveBuyRequest = async (propertyId) => {
+        try {
+            setLoading(true);
+            await approveBuy(propertyId);
+        } catch (error) {
+            console.error("Error approving buy request:", error);
+            alert("Failed to approve buy request");
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleGoBack = () => {
@@ -64,7 +119,6 @@ export default function AdminDashboard() {
     if (!isAdmin) {
         return (
             <div className={`${outfit.className} text-white min-h-screen flex flex-col`}>
-                <Header />
                 <div className="flex-grow flex items-center justify-center">
                     <div className="text-center p-8 bg-white/10 backdrop-blur-md rounded-lg max-w-md mx-4">
                         <h2 className="text-2xl font-bold mb-4">Admin Access Required</h2>
@@ -77,10 +131,10 @@ export default function AdminDashboard() {
                         </button>
                     </div>
                 </div>
-                <Footer />
             </div>
         );
     }
+
     return (
         <div className={`${outfit.className} text-white min-h-screen flex flex-col`}>
             <Header />
@@ -100,7 +154,12 @@ export default function AdminDashboard() {
                         Buy Requests ({buyRequests.length})
                     </button>
                 </div>
-                {activeTab === "verification" ? (
+
+                {loading ? (
+                    <div className="text-center py-12">
+                        <p>Loading...</p>
+                    </div>
+                ) : activeTab === "verification" ? (
                     <div>
                         <h2 className="text-2xl font-semibold mb-6">Land Verification Requests</h2>
 
@@ -110,23 +169,11 @@ export default function AdminDashboard() {
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {verificationRequests.map((property) => (
-                                    <div key={property.id} className="bg-white/5 rounded-lg p-6 border border-white/10"
+                                {verificationRequests.map((property, index) => (
+                                    <div key={index} className="bg-white/5 rounded-lg p-6 border border-white/10"
                                         onClick={() => handleViewLand(property.id)}>
                                         <div className="mb-4">
                                             <h3 className="text-xl font-semibold">{property.landType} in {property.location}</h3>
-                                        </div>
-                                        <div className="relative h-48 w-full rounded-lg overflow-hidden">
-                                            <Image
-                                                src={property.landimage || DummyImage}
-                                                alt={property.location}
-                                                fill
-                                                className="object-cover"
-                                                onError={(e) => {
-                                                    e.target.onerror = null;
-                                                    e.target.src = DummyImage;
-                                                }}
-                                            />
                                         </div>
                                         <div className="pt-2">
                                             <div className="flex items-center text-sm text-gray-400 mt-1">
@@ -151,7 +198,7 @@ export default function AdminDashboard() {
                                         <div className="space-y-3 mb-6">
                                             <div>
                                                 <span className="text-gray-400 text-sm">Price:</span>
-                                                <p>{property.price}</p>
+                                                <p>₹ {property.price}</p>
                                             </div>
                                             <div>
                                                 <span className="text-gray-400 text-sm">Seller:</span>
@@ -166,7 +213,7 @@ export default function AdminDashboard() {
                                                     <span className={`text-xs px-2 py-1 rounded ${property.clearanceCertificates ? "bg-green-900/30 text-green-400" : "bg-red-900/30 text-red-400"}`}>
                                                         Clearance
                                                     </span>
-                                                    <span className={`text-xs px-2 py-1 rounded ${property.propertyTaxdocument ? "bg-green-900/30 text-green-400" : "bg-red-900/30 text-red-400"}`}>
+                                                    <span className={`text-xs px-2 py-1 rounded ${property.propertyTaxDocument ? "bg-green-900/30 text-green-400" : "bg-red-900/30 text-red-400"}`}>
                                                         Tax Doc
                                                     </span>
                                                     <span className={`text-xs px-2 py-1 rounded ${property.encumbranceCertificate ? "bg-green-900/30 text-green-400" : "bg-red-900/30 text-red-400"}`}>
@@ -178,14 +225,22 @@ export default function AdminDashboard() {
 
                                         <div className="flex space-x-3">
                                             <button
-                                                onClick={() => handleApproveVerification(property.id)}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleApproveVerification(index);
+                                                }}
                                                 className="flex-1 bg-green-600 hover:bg-green-700 py-2 rounded-md font-medium transition-colors"
+                                                disabled={loading}
                                             >
                                                 Approve
                                             </button>
                                             <button
-                                                onClick={() => handleRejectVerification(property.id)}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleRejectVerification(index);
+                                                }}
                                                 className="flex-1 bg-red-600 hover:bg-red-700 py-2 rounded-md font-medium transition-colors"
+                                                disabled={loading}
                                             >
                                                 Reject
                                             </button>
@@ -205,20 +260,37 @@ export default function AdminDashboard() {
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {buyRequests.map((property) => (
-                                    <div key={property.id} className="bg-white/5 rounded-lg p-6 border border-white/10" onClick={() => handleViewLand(property.id)}>
+                                {buyRequests.map((property, index) => (
+                                    <div key={index} className="bg-white/5 rounded-lg p-6 border border-white/10"
+                                        onClick={() => handleViewLand(property.id)}>
                                         <div className="mb-4">
                                             <h3 className="text-xl font-semibold">{property.landType} in {property.location}</h3>
+                                        </div>
+                                        <div className="pt-2">
+                                            <div className="flex items-center text-sm text-gray-400 mt-1">
+                                                <FaMapMarkerAlt className="mr-1" />
+                                                <span>{property.location}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center mt-3">
+                                                <div>
+                                                    <span className="text-xs text-gray-500">Type</span>
+                                                    <p className="text-sm font-medium text-white">
+                                                        {property.landType}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <span className="text-xs text-gray-500">Size</span>
+                                                    <p className="text-sm font-medium text-white">
+                                                        {property.size}
+                                                    </p>
+                                                </div>
+                                            </div>
                                         </div>
 
                                         <div className="space-y-3 mb-6">
                                             <div>
-                                                <span className="text-gray-400 text-sm">Size:</span>
-                                                <p>{property.size}</p>
-                                            </div>
-                                            <div>
                                                 <span className="text-gray-400 text-sm">Price:</span>
-                                                <p>{property.price}</p>
+                                                <p>₹ {property.price}</p>
                                             </div>
                                             <div>
                                                 <span className="text-gray-400 text-sm">Seller:</span>
@@ -231,8 +303,8 @@ export default function AdminDashboard() {
                                             <div>
                                                 <span className="text-gray-400 text-sm">Verification:</span>
                                                 <span className={`text-xs px-2 py-1 rounded ${property.propertyVerification === "approved" ? "bg-green-900/30 text-green-400" :
-                                                        property.propertyVerification === "rejected" ? "bg-red-900/30 text-red-400" :
-                                                            "bg-yellow-900/30 text-yellow-400"
+                                                    property.propertyVerification === "rejected" ? "bg-red-900/30 text-red-400" :
+                                                        "bg-yellow-900/30 text-yellow-400"
                                                     }`}>
                                                     {property.propertyVerification}
                                                 </span>
@@ -241,8 +313,12 @@ export default function AdminDashboard() {
 
                                         <div className="flex space-x-3">
                                             <button
-                                                onClick={() => handleApproveBuyRequest(property.id)}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleApproveBuyRequest(index);
+                                                }}
                                                 className="flex-1 bg-green-600 hover:bg-green-700 py-2 rounded-md font-medium transition-colors"
+                                                disabled={loading}
                                             >
                                                 Approve
                                             </button>
@@ -254,6 +330,7 @@ export default function AdminDashboard() {
                     </div>
                 )}
             </div>
+            <Footer />
         </div>
     );
 }

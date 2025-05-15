@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Outfit } from 'next/font/google';
 import { useWallet } from "@/context/WalletContext";
 import { useState, useRef, useEffect } from "react";
-import { 
+import {
   FileText
 } from 'lucide-react';
 import { addProperty, listenForPropertyAdded } from "../../utils/contractintegration/Contract";
@@ -16,7 +16,7 @@ const outfit = Outfit({
 });
 
 const tamilNaduDistricts = [
-  "Ariyalur", "Chengalpattu", "Chennai", "Coimbatore", "Cuddalore", 
+  "Ariyalur", "Chengalpattu", "Chennai", "Coimbatore", "Cuddalore",
   "Dharmapuri", "Dindigul", "Erode", "Kallakurichi", "Kancheepuram",
   "Karur", "Krishnagiri", "Madurai", "Mayiladuthurai", "Nagapattinam",
   "Namakkal", "Nilgiris", "Perambalur", "Pudukkottai", "Ramanathapuram",
@@ -180,14 +180,14 @@ export default function UploadLand() {
   };
 
   const handleUpload = async () => {
-    if (!isConnected || 
-        !landData.propertyImage || 
-        !landData.description || 
-        !landData.price || 
-        !landData.district || 
-        !landData.landType ||
-        !landData.landSize ||
-        !landData.measurementType) {
+    if (!isConnected ||
+      !landData.propertyImage ||
+      !landData.description ||
+      !landData.price ||
+      !landData.district ||
+      !landData.landType ||
+      !landData.landSize ||
+      !landData.measurementType) {
       return;
     }
 
@@ -195,12 +195,9 @@ export default function UploadLand() {
     setUploadStatus('Uploading property image to IPFS...');
 
     try {
-      // Upload only the property image to IPFS
       const imageUrl = await uploadFileToIPFS(landData.propertyImage);
-      
+
       setUploadStatus('Registering property on blockchain...');
-      
-      // Prepare property data for blockchain
       const propertyData = {
         landImage: imageUrl,
         location: landData.district,
@@ -214,8 +211,6 @@ export default function UploadLand() {
         propertyTaxDocument: landData.propertyTaxDoc.hasFile,
         encumbranceCertificate: landData.encumbranceCert.hasFile
       };
-
-      // Call the smart contract function
       const tx = await addProperty(propertyData);
       setUploadStatus('Transaction sent. Waiting for confirmation...');
       await tx.wait();
@@ -243,7 +238,6 @@ export default function UploadLand() {
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Left Column - Image Upload */}
               <div className="space-y-6">
                 <div>
                   <div
@@ -282,27 +276,24 @@ export default function UploadLand() {
                   </div>
                 </div>
 
-                {/* Document Uploads */}
                 <div className="space-y-4">
                   <h3 className="text-sm font-medium">Document Uploads:</h3>
-                  
+
                   <div className="space-y-3">
-                    {/* Encumbrance Certificate */}
                     <div>
                       <button
                         onClick={() => triggerFileInput(encumbranceRef)}
                         disabled={isUploading}
-                        className={`w-full text-left p-3 border rounded-lg flex items-center justify-between ${
-                          landData.encumbranceCert.hasFile 
-                            ? 'border-green-500 bg-green-500/10' 
+                        className={`w-full text-left p-3 border rounded-lg flex items-center justify-between ${landData.encumbranceCert.hasFile
+                            ? 'border-green-500 bg-green-500/10'
                             : 'border-gray-700 hover:border-[#77227F]'
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center">
                           <FileText className="h-5 w-5 mr-2" />
                           <span className="text-sm">
-                            {landData.encumbranceCert.hasFile 
-                              ? landData.encumbranceCert.file.name 
+                            {landData.encumbranceCert.hasFile
+                              ? landData.encumbranceCert.file.name
                               : "Encumbrance Certificate"}
                           </span>
                         </div>
@@ -318,22 +309,20 @@ export default function UploadLand() {
                       />
                     </div>
 
-                    {/* Sale Deed */}
                     <div>
                       <button
                         onClick={() => triggerFileInput(saleDeedRef)}
                         disabled={isUploading}
-                        className={`w-full text-left p-3 border rounded-lg flex items-center justify-between ${
-                          landData.saleDeed.hasFile 
-                            ? 'border-green-500 bg-green-500/10' 
+                        className={`w-full text-left p-3 border rounded-lg flex items-center justify-between ${landData.saleDeed.hasFile
+                            ? 'border-green-500 bg-green-500/10'
                             : 'border-gray-700 hover:border-[#77227F]'
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center">
                           <FileText className="h-5 w-5 mr-2" />
                           <span className="text-sm">
-                            {landData.saleDeed.hasFile 
-                              ? landData.saleDeed.file.name 
+                            {landData.saleDeed.hasFile
+                              ? landData.saleDeed.file.name
                               : "Sale Deed"}
                           </span>
                         </div>
@@ -349,22 +338,20 @@ export default function UploadLand() {
                       />
                     </div>
 
-                    {/* Clearance Certificate */}
                     <div>
                       <button
                         onClick={() => triggerFileInput(clearanceRef)}
                         disabled={isUploading}
-                        className={`w-full text-left p-3 border rounded-lg flex items-center justify-between ${
-                          landData.clearanceCert.hasFile 
-                            ? 'border-green-500 bg-green-500/10' 
+                        className={`w-full text-left p-3 border rounded-lg flex items-center justify-between ${landData.clearanceCert.hasFile
+                            ? 'border-green-500 bg-green-500/10'
                             : 'border-gray-700 hover:border-[#77227F]'
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center">
                           <FileText className="h-5 w-5 mr-2" />
                           <span className="text-sm">
-                            {landData.clearanceCert.hasFile 
-                              ? landData.clearanceCert.file.name 
+                            {landData.clearanceCert.hasFile
+                              ? landData.clearanceCert.file.name
                               : "Clearance Certificate"}
                           </span>
                         </div>
@@ -380,22 +367,20 @@ export default function UploadLand() {
                       />
                     </div>
 
-                    {/* Property Tax Document */}
                     <div>
                       <button
                         onClick={() => triggerFileInput(taxDocRef)}
                         disabled={isUploading}
-                        className={`w-full text-left p-3 border rounded-lg flex items-center justify-between ${
-                          landData.propertyTaxDoc.hasFile 
-                            ? 'border-green-500 bg-green-500/10' 
+                        className={`w-full text-left p-3 border rounded-lg flex items-center justify-between ${landData.propertyTaxDoc.hasFile
+                            ? 'border-green-500 bg-green-500/10'
                             : 'border-gray-700 hover:border-[#77227F]'
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center">
                           <FileText className="h-5 w-5 mr-2" />
                           <span className="text-sm">
-                            {landData.propertyTaxDoc.hasFile 
-                              ? landData.propertyTaxDoc.file.name 
+                            {landData.propertyTaxDoc.hasFile
+                              ? landData.propertyTaxDoc.file.name
                               : "Property Tax Document"}
                           </span>
                         </div>
@@ -414,7 +399,6 @@ export default function UploadLand() {
                 </div>
               </div>
 
-              {/* Right Column - Form Fields */}
               <div className="space-y-6">
 
                 <div>
@@ -542,26 +526,25 @@ export default function UploadLand() {
                 <div className="pt-2">
                   <button
                     onClick={handleUpload}
-                    disabled={isUploading || !isConnected || 
-                      !landData.propertyImage || 
-                      !landData.description || 
-                      !landData.price || 
-                      !landData.district || 
+                    disabled={isUploading || !isConnected ||
+                      !landData.propertyImage ||
+                      !landData.description ||
+                      !landData.price ||
+                      !landData.district ||
                       !landData.landType ||
                       !landData.landSize ||
                       !landData.measurementType}
-                    className={`w-full py-3 px-6 rounded-lg font-medium transition-colors ${
-                      (isUploading || !isConnected || 
-                       !landData.propertyImage || 
-                       !landData.description || 
-                       !landData.price || 
-                       !landData.district || 
-                       !landData.landType ||
-                       !landData.landSize ||
-                       !landData.measurementType)
+                    className={`w-full py-3 px-6 rounded-lg font-medium transition-colors ${(isUploading || !isConnected ||
+                        !landData.propertyImage ||
+                        !landData.description ||
+                        !landData.price ||
+                        !landData.district ||
+                        !landData.landType ||
+                        !landData.landSize ||
+                        !landData.measurementType)
                         ? 'bg-gray-600 cursor-not-allowed'
                         : 'bg-[#77227F] hover:bg-purple-700'
-                    }`}
+                      }`}
                   >
                     {isUploading ? 'Registering...' : !isConnected ? 'Connect Wallet to Register' : 'Register Property'}
                   </button>
@@ -571,7 +554,6 @@ export default function UploadLand() {
           </div>
         </section>
       </div>
-
       <Footer />
     </div>
   );

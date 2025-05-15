@@ -36,10 +36,7 @@ contract LandRegistry {
         string propertyVerification
     );
 
-    event PropertyRequested(
-        uint256 indexed propertyId,
-        address indexed buyer
-    );
+    event PropertyRequested(uint256 indexed propertyId, address indexed buyer);
 
     event PropertyApproved(
         uint256 indexed propertyId,
@@ -87,7 +84,10 @@ contract LandRegistry {
         emit PropertyAdded(propertyId, msg.sender, _location, _price);
     }
 
-    function verifyProperty(uint256 _propertyId, string memory _verificationStatus) public {
+    function verifyProperty(
+        uint256 _propertyId,
+        string memory _verificationStatus
+    ) public {
         require(_propertyId < properties.length, "Property does not exist");
 
         properties[_propertyId].propertyVerification = _verificationStatus;
@@ -97,7 +97,10 @@ contract LandRegistry {
 
     function sellProperty(uint256 _propertyId) public {
         require(_propertyId < properties.length, "Property does not exist");
-        require(properties[_propertyId].seller == msg.sender, "Only seller can list property");
+        require(
+            properties[_propertyId].seller == msg.sender,
+            "Only seller can list property"
+        );
 
         properties[_propertyId].marketStatus = "available";
     }
@@ -115,10 +118,16 @@ contract LandRegistry {
         properties[_propertyId].transactionData = "completed";
         properties[_propertyId].registrationRequest = "approved";
 
-        emit PropertyApproved(_propertyId, properties[_propertyId].seller, properties[_propertyId].buyer);
+        emit PropertyApproved(
+            _propertyId,
+            properties[_propertyId].seller,
+            properties[_propertyId].buyer
+        );
     }
 
-    function viewByIndex(uint256 _propertyId) public view returns (Property memory) {
+    function viewByIndex(
+        uint256 _propertyId
+    ) public view returns (Property memory) {
         require(_propertyId < properties.length, "Property does not exist");
         return properties[_propertyId];
     }
@@ -127,4 +136,3 @@ contract LandRegistry {
         return properties;
     }
 }
-    

@@ -423,94 +423,104 @@ const marketContractABI = [
 	}
 ];
 
-const marketContractAddress = "0x599d490EEEB99d6eAE5396059671C45c6BAacFED"; 
+const marketContractAddress = "0x599d490EEEB99d6eAE5396059671C45c6BAacFED";
+const getMarketContract = async () => {
+	if (!window.ethereum) {
+		throw new Error("MetaMask is not installed!");
+	}
 
-const getMarketContract = () => {
-  if (!window.ethereum) {
-    throw new Error("MetaMask is not installed!");
-  }
-  const provider = new ethers.providers.Web3Provider(window.ethereum);
-  const signer = provider.getSigner();
-  return new ethers.Contract(marketContractAddress, marketContractABI, signer);
+	const provider = new ethers.providers.Web3Provider(window.ethereum);
+
+	await provider.send("eth_requestAccounts", []);
+
+	const signer = provider.getSigner();
+	return new ethers.Contract(marketContractAddress, marketContractABI, signer);
 };
 
-export const addProperty = async (propertyData) => {
-  const contract = getMarketContract();
-  const tx = await contract.addProperty(
-    propertyData.landImage,
-    propertyData.location,
-    propertyData.googleMapLink,
-    propertyData.size,
-    propertyData.price,
-    propertyData.description,
-    propertyData.landType,
-    propertyData.saleDeed,
-    propertyData.clearanceCertificates,
-    propertyData.propertyTaxDocument,
-    propertyData.encumbranceCertificate
-  );
-  await tx.wait();
-  return tx;
+const contractCallWrapper = async (method, ...args) => {
+	try {
+		const contract = await getMarketContract();
+		const tx = await method(contract, ...args);
+		if (tx.wait) await tx.wait();
+		return tx;
+	} catch (error) {
+		console.error("Contract interaction failed:", error);
+		throw error;
+	}
 };
 
-export const verifyProperty = async (propertyId, verificationStatus) => {
-  const contract = getMarketContract();
-  const tx = await contract.verifyProperty(propertyId, verificationStatus);
-  await tx.wait();
-  return tx;
-};
+export const addProperty = async (propertyData) =>
+	contractCallWrapper(async (contract) =>
+		contract.addProperty(
+			propertyData.landImage,
+			propertyData.location,
+			propertyData.googleMapLink,
+			propertyData.size,
+			propertyData.price,
+			propertyData.description,
+			propertyData.landType,
+			propertyData.saleDeed,
+			propertyData.clearanceCertificates,
+			propertyData.propertyTaxDocument,
+			propertyData.encumbranceCertificate
+		)
+	);
 
-export const sellProperty = async (propertyId) => {
-  const contract = getMarketContract();
-  const tx = await contract.sellProperty(propertyId);
-  await tx.wait();
-  return tx;
-};
+export const verifyProperty = async (propertyId, verificationStatus) =>
+	contractCallWrapper(async (contract) =>
+		contract.verifyProperty(propertyId, verificationStatus)
+	);
 
-export const requestToBuy = async (propertyId) => {
-  const contract = getMarketContract();
-  const tx = await contract.requestToBuy(propertyId);
-  await tx.wait();
-  return tx;
-};
+export const sellProperty = async (propertyId) =>
+	contractCallWrapper(async (contract) =>
+		contract.sellProperty(propertyId)
+	);
 
-export const approveBuy = async (propertyId) => {
-  const contract = getMarketContract();
-  const tx = await contract.approveBuy(propertyId);
-  await tx.wait();
-  return tx;
-};
+export const requestToBuy = async (propertyId) =>
+	contractCallWrapper(async (contract) =>
+		contract.requestToBuy(propertyId)
+	);
+
+export const approveBuy = async (propertyId) =>
+	contractCallWrapper(async (contract) =>
+		contract.approveBuy(propertyId)
+	);
 
 export const viewByIndex = async (propertyId) => {
-  const contract = getMarketContract();
-  return await contract.viewByIndex(propertyId);
+	const contract = await getMarketContract();
+	return await contract.viewByIndex(propertyId);
 };
 
 export const viewAll = async () => {
-  const contract = getMarketContract();
-  return await contract.viewAll();
+	const contract = await getMarketContract();
+	return await contract.viewAll();
 };
 
-export const listenForPropertyAdded = (callback) => {
-  const contract = getMarketContract();
-  contract.on("PropertyAdded", callback);
-  return () => contract.off("PropertyAdded", callback);
+export const createEventListener = (eventName, callback) => {
+	let contract;
+	let cleanup;
+
+	const setupListener = async () => {
+		contract = await getMarketContract();
+		contract.on(eventName, callback);
+		cleanup = () => contract.off(eventName, callback);
+	};
+
+	setupListener();
+
+	return () => {
+		if (cleanup) cleanup();
+	};
 };
 
-export const listenForPropertyVerified = (callback) => {
-  const contract = getMarketContract();
-  contract.on("PropertyVerified", callback);
-  return () => contract.off("PropertyVerified", callback);
-};
+export const listenForPropertyAdded = (callback) =>
+	createEventListener("PropertyAdded", callback);
 
-export const listenForPropertyRequested = (callback) => {
-  const contract = getMarketContract();
-  contract.on("PropertyRequested", callback);
-  return () => contract.off("PropertyRequested", callback);
-};
+export const listenForPropertyVerified = (callback) =>
+	createEventListener("PropertyVerified", callback);
 
-export const listenForPropertyApproved = (callback) => {
-  const contract = getMarketContract();
-  contract.on("PropertyApproved", callback);
-  return () => contract.off("PropertyApproved", callback);
-};
+export const listenForPropertyRequested = (callback) =>
+	createEventListener("PropertyRequested", callback);
+
+export const listenForPropertyApproved = (callback) =>
+	createEventListener("PropertyApproved", callback);

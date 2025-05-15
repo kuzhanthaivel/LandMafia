@@ -27,20 +27,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-             <div className="fixed inset-0 -z-10">
-                <Image
-                  src={BgImage}
-                  alt="Background"
-                  layout="fill"
-                  objectFit="cover"
-                  quality={100}
-                />
-                <div className="absolute inset-0  bg-opacity-70"></div>
-              </div>
-      <WalletProvider>
-          {children}
-      </WalletProvider>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        <div className="fixed inset-0 -z-10">
+          <Image
+            src={BgImage}
+            alt="Background"
+            layout="fill"
+            objectFit="cover"
+            quality={100}
+          />
+          <div className="absolute inset-0  bg-opacity-70"></div>
+        </div>
+        <WalletProvider>{children}</WalletProvider>
       </body>
     </html>
   );
