@@ -19,7 +19,7 @@ const outfit = Outfit({
   weight: "400",
 });
 
-export default function ViewLand({ params }) {
+export default function ViewLand( { params } ) {
   const router = useRouter();
   const slug = params.slug;
   const [land, setLand] = useState(null);
