@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState ,useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import logo from "../assets/logo.png";
@@ -7,6 +7,7 @@ import { useWallet } from "@/context/WalletContext";
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [verifiedStatus, setVerifiedStatus] = useState(false);
   const {
     isConnected,
     account,
@@ -15,8 +16,19 @@ export default function Header() {
     shortenAddress,
   } = useWallet();
 
+
+    useEffect(() => {
+    const verifiedStatus = localStorage.getItem('isVerified') === 'true';
+    setVerifiedStatus(verifiedStatus)
+  }, []);
+
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
+  };
+  const toggleVerifiedStatus = () => {
+    localStorage.setItem('isVerified', 'false');
+    const verifiedStatus = localStorage.getItem('isVerified') === 'true';
+    setVerifiedStatus(verifiedStatus)
   };
 
   return (
@@ -125,12 +137,20 @@ export default function Header() {
             </button>
           )}
         </div>
-        <Link
-          href="/approval "
+      <div className="flex flex-col gap-2">
+                <Link
+          href="/approval"
           className="w-2 h-2 bg-[#77227F] items-end rounded-full"
         >
           {" "}
         </Link>
+        <button
+          onClick={toggleVerifiedStatus}
+          className={`w-2 h-2  items-end rounded-full ${verifiedStatus ? "bg-green-800" : "bg-red-800"}`}
+        >
+          {" "}
+        </button>
+      </div>
       </div>
     </header>
   );

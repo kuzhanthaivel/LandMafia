@@ -12,7 +12,7 @@ import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import DummyImage from "../../../assets/Bg.jpg";
-import { viewByIndex } from "../../../utils/contractintegration/Contract"; // Import your contract function
+import { viewByIndex } from "../../../utils/contractintegration/Contract"; 
 
 const outfit = Outfit({
   subsets: ["latin"],
