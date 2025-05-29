@@ -4,10 +4,14 @@ import Link from "next/link";
 import Image from "next/image";
 import logo from "../assets/logo.png";
 import { useWallet } from "@/context/WalletContext";
+import { useRouter } from "next/navigation";
+import { MdOutlineArrowDropDownCircle } from "react-icons/md";
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [verifiedStatus, setVerifiedStatus] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+    const router = useRouter();
   const {
     isConnected,
     account,
@@ -15,7 +19,6 @@ export default function Header() {
     disconnectWallet,
     shortenAddress,
   } = useWallet();
-
 
     useEffect(() => {
     const verifiedStatus = localStorage.getItem('isVerified') === 'true';
@@ -29,6 +32,12 @@ export default function Header() {
     localStorage.setItem('isVerified', 'false');
     const verifiedStatus = localStorage.getItem('isVerified') === 'true';
     setVerifiedStatus(verifiedStatus)
+  };
+    const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("username");
+    router.push("/");
+    setDropdownOpen(false);
   };
 
   return (
@@ -137,7 +146,14 @@ export default function Header() {
             </button>
           )}
         </div>
-      <div className="flex flex-col gap-2">
+        <div onClick={() => setDropdownOpen(!dropdownOpen)}>
+                        <MdOutlineArrowDropDownCircle
+                className={`text-lg text-gray-400 transition-transform ${
+                  dropdownOpen ? "transform rotate-180" : ""
+                }`}
+              />  
+        </div>
+      <div className="flex flex-col gap-2 relative">
                 <Link
           href="/approval"
           className="w-2 h-2 bg-[#77227F] items-end rounded-full"
@@ -150,6 +166,16 @@ export default function Header() {
         >
           {" "}
         </button>
+                    {dropdownOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-gray-800/90 backdrop-blur-sm border border-gray-700 rounded-xl shadow-lg z-10 overflow-hidden top-10">
+                <button
+                  onClick={handleLogout}
+                  className="w-full px-4 py-3 text-left text-white  bg-[#77227F] transition-colors"
+                >
+                  Logout
+                </button>
+              </div>
+            )}
       </div>
       </div>
     </header>

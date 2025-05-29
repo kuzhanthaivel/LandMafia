@@ -27,13 +27,18 @@ export default function AdminDashboard() {
     const [properties, setProperties] = useState([]);
     const [refresh, setRefresh] = useState(false);
     const [loadingStates, setLoadingStates] = useState({});
-
+    const [registrationDates, setRegistrationDates] = useState({});
     const {
         account
     } = useWallet();
 
     const isAdmin = account?.toLowerCase() === process.env.NEXT_PUBLIC_ADMIN?.toLowerCase();
-
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            router.push(`/login`);
+        }
+    }, []);
     useEffect(() => {
         const fetchProperties = async () => {
             if (!isAdmin) return;
@@ -68,10 +73,10 @@ export default function AdminDashboard() {
 
     const buyRequests = properties
         .map((property, index) => ({ ...property, index }))
-        .filter(property => 
+        .filter(property =>
             property.registrationRequest === "pending" &&
             property.propertyVerification === "approved" &&
-            property.buyer
+            property.buyer !== "0x0000000000000000000000000000000000000000"
         );
 
     const handleApproveVerification = async (index) => {
@@ -100,10 +105,12 @@ export default function AdminDashboard() {
         }
     };
 
-    const handleApproveBuyRequest = async (index) => {
+    const handleApproveBuyRequest = async (index, registrationDate) => {
         try {
             setLoadingStates(prev => ({ ...prev, [index]: true }));
-            await approveBuy(index);
+            const timestamp = Math.floor(new Date(registrationDate).getTime() / 1000);
+            console.log(timestamp)
+            await approveBuy(index, timestamp);
             setRefresh(prev => !prev);
         } catch (error) {
             console.error("Error approving buy request:", error);
@@ -168,7 +175,7 @@ export default function AdminDashboard() {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {verificationRequests.map((property) => (
                                     <div key={property.index} className="bg-white/5 rounded-lg p-6 border border-white/10"
-                                        onClick={() => handleViewLand(property.index)}>
+                                      onClick={() => handleViewLand(property.index)}   >
                                         <div className="mb-4">
                                             <h3 className="text-xl font-semibold">{property.landType} in {property.location}</h3>
                                         </div>
@@ -219,7 +226,6 @@ export default function AdminDashboard() {
                                                 </div>
                                             </div>
                                         </div>
-
                                         <div className="flex space-x-3">
                                             <button
                                                 onClick={(e) => {
@@ -227,11 +233,10 @@ export default function AdminDashboard() {
                                                     handleApproveVerification(property.index);
                                                 }}
                                                 disabled={loadingStates[property.index]}
-                                                className={`flex-1 py-2 rounded-md font-medium transition-colors ${
-                                                    loadingStates[property.index] 
-                                                        ? "bg-gray-600 cursor-not-allowed" 
-                                                        : "bg-green-600 hover:bg-green-700"
-                                                }`}
+                                                className={`flex-1 py-2 rounded-md font-medium transition-colors ${loadingStates[property.index]
+                                                    ? "bg-gray-600 cursor-not-allowed"
+                                                    : "bg-green-600 hover:bg-green-700"
+                                                    }`}
                                             >
                                                 {loadingStates[property.index] ? "Processing..." : "Approve"}
                                             </button>
@@ -241,11 +246,10 @@ export default function AdminDashboard() {
                                                     handleRejectVerification(property.index);
                                                 }}
                                                 disabled={loadingStates[property.index]}
-                                                className={`flex-1 py-2 rounded-md font-medium transition-colors ${
-                                                    loadingStates[property.index] 
-                                                        ? "bg-gray-600 cursor-not-allowed" 
-                                                        : "bg-red-600 hover:bg-red-700"
-                                                }`}
+                                                className={`flex-1 py-2 rounded-md font-medium transition-colors ${loadingStates[property.index]
+                                                    ? "bg-gray-600 cursor-not-allowed"
+                                                    : "bg-red-600 hover:bg-red-700"
+                                                    }`}
                                             >
                                                 {loadingStates[property.index] ? "Processing..." : "Reject"}
                                             </button>
@@ -267,7 +271,7 @@ export default function AdminDashboard() {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {buyRequests.map((property) => (
                                     <div key={property.index} className="bg-white/5 rounded-lg p-6 border border-white/10"
-                                        onClick={() => handleViewLand(property.index)}>
+                                       >
                                         <div className="mb-4">
                                             <h3 className="text-xl font-semibold">{property.landType} in {property.location}</h3>
                                         </div>
@@ -317,17 +321,31 @@ export default function AdminDashboard() {
                                         </div>
 
                                         <div className="flex space-x-3">
+                                            <input
+                                                type="date"
+                                                onChange={(e) => {
+                                                    setRegistrationDates(prev => ({
+                                                        ...prev,
+                                                        [property.index]: e.target.value
+                                                    }));
+                                                }}
+                                                className="flex-1 bg-white/10 border border-white/20 rounded-md px-3 py-2 text-sm"
+                                                required
+                                            />
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    handleApproveBuyRequest(property.index);
+                                                    if (!registrationDates[property.index]) {
+                                                        alert("Please select a registration date");
+                                                        return;
+                                                    }
+                                                    handleApproveBuyRequest(property.index, registrationDates[property.index]);
                                                 }}
                                                 disabled={loadingStates[property.index]}
-                                                className={`flex-1 py-2 rounded-md font-medium transition-colors ${
-                                                    loadingStates[property.index] 
-                                                        ? "bg-gray-600 cursor-not-allowed" 
+                                                className={`flex-1 py-2 rounded-md font-medium transition-colors ${loadingStates[property.index]
+                                                        ? "bg-gray-600 cursor-not-allowed"
                                                         : "bg-green-600 hover:bg-green-700"
-                                                }`}
+                                                    }`}
                                             >
                                                 {loadingStates[property.index] ? "Processing..." : "Approve"}
                                             </button>

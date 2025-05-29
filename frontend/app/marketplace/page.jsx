@@ -31,7 +31,12 @@ export default function LandMarketplace() {
   const router = useRouter();
 
   const { isConnected, account } = useWallet();
-
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push(`/login`);
+    }
+  }, []);
   useEffect(() => {
     fetchProperties();
 

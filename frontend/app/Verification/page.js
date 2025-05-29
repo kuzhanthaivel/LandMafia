@@ -114,7 +114,12 @@ export default function DocumentVerification() {
     documentInputRef.current.value = '';
     selfieInputRef.current.value = '';
   };
-
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push(`/login`);
+    }
+  }, []);
   return (
     <div className={`${outfit.className} text-white min-h-screen flex flex-col`}>
       <div className="flex-grow">

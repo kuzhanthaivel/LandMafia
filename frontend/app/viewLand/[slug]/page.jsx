@@ -12,19 +12,24 @@ import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import DummyImage from "../../../assets/Bg.jpg";
-import { viewByIndex } from "../../../utils/contractintegration/Contract"; 
-
+import { viewByIndex } from "../../../utils/contractintegration/Contract";
+import Link from "next/link";
 const outfit = Outfit({
   subsets: ["latin"],
   weight: "400",
 });
 
-export default function ViewLand( { params } ) {
+export default function ViewLand({ params }) {
   const router = useRouter();
   const slug = params.slug;
   const [land, setLand] = useState(null);
   const [loading, setLoading] = useState(true);
-
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push(`/login`);
+    }
+  }, []);
   useEffect(() => {
     const fetchLandData = async () => {
       try {
@@ -116,7 +121,6 @@ export default function ViewLand( { params } ) {
                 />
               </div>
 
-              {/* View on Map Button */}
               <div className="mt-6">
                 <a
                   href={land.googlemaplink}
@@ -193,9 +197,12 @@ export default function ViewLand( { params } ) {
                   </h3>
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-300">
+                      <Link
+                        href={land.encumbranceCertificate}
+                        className="text-gray-300 hover:text-blue-400 hover:underline cursor-pointer transition duration-300"
+                      >
                         Encumbrance Certificate
-                      </span>
+                      </Link>
                       {land.encumbranceCertificate ? (
                         <span className="text-green-400 flex items-center">
                           <RiVerifiedBadgeLine className="mr-1" />
@@ -208,7 +215,12 @@ export default function ViewLand( { params } ) {
                     </div>
 
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-300">Sale Deed</span>
+                      <Link
+                        href={land.saleDeed}
+                        className="text-gray-300 hover:text-blue-400 hover:underline cursor-pointer transition duration-300"
+                      >
+                        Sale Deed
+                      </Link>
                       {land.saleDeed ? (
                         <span className="text-green-400 flex items-center">
                           <RiVerifiedBadgeLine className="mr-1" />
@@ -219,10 +231,14 @@ export default function ViewLand( { params } ) {
                         </span>
                       )}
                     </div>
+
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-300">
+                      <Link
+                        href={land.clearanceCertificates}
+                        className="text-gray-300 hover:text-blue-400 hover:underline cursor-pointer transition duration-300"
+                      >
                         Clearance Certificates
-                      </span>
+                      </Link>
                       {land.clearanceCertificates ? (
                         <span className="text-green-400 flex items-center">
                           <RiVerifiedBadgeLine className="mr-1" />
@@ -233,8 +249,14 @@ export default function ViewLand( { params } ) {
                         </span>
                       )}
                     </div>
+
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-300">Property Tax</span>
+                      <Link
+                        href={land.propertyTaxdocument}
+                        className="text-gray-300 hover:text-blue-400 hover:underline cursor-pointer transition duration-300"
+                      >
+                        Property Tax
+                      </Link>
                       {land.propertyTaxdocument ? (
                         <span className="text-green-400 flex items-center">
                           <RiVerifiedBadgeLine className="mr-1" />

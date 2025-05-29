@@ -2,7 +2,10 @@
 import Header from "../components/header";
 import Footer from "../components/footer";
 import { Outfit } from "next/font/google";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import logo from "../assets/logo.png";
+import Image from "next/image";
 import {
   ShieldCheck,
   FileText,
@@ -23,13 +26,51 @@ const outfit = Outfit({
 
 export default function LandingPage() {
   const [activeTab, setActiveTab] = useState("buyer");
-
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+    useEffect(() => {
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("token");
+      setIsLoggedIn(!!token);
+    }
+  }, []);
   return (
     <div
       className={`${outfit.className} text-white min-h-screen flex flex-col bg-transparent`}
     >
       <div className="flex-grow">
-        <Header />
+             <div className="w-full px-4 sm:px-6 lg:px-20 py-4 sm:py-6 lg:py-8 flex flex-wrap items-center justify-between bg-black border-b border-gray-800 bg-transparent">
+        <div className="flex items-center justify-between w-full">
+          <div className="mr-4">
+            <Image src={logo} alt="Logo" className="w-32 lg:w-40" />
+          </div>
+                    {isLoggedIn ? (
+            <Link
+               href="/marketplace"
+              className="bg-[#77227F] hover:bg-purple-700 text-white px-6 py-3 rounded-lg shadow-lg font-semibold text-xl tracking-wide flex items-center"
+            >
+              MARKET PLACE
+              <span className="inline-block ml-2 transform group-hover:rotate-45 transition-transform">
+                ↗
+              </span>
+            </Link>
+          ) : (
+            <div>
+              <Link
+                href="/login"
+                className="bg-[#77227F] hover:bg-purple-700 text-white px-6 py-3 rounded-lg shadow-lg font-semibold text-xl tracking-wide flex items-center"
+              >
+                LOG IN / SIGN UP
+                <span className="inline-block ml-2 transform group-hover:rotate-45 transition-transform">
+                  ↗
+                </span>
+              </Link>
+            </div>
+          )}
+          </div>
+          </div>
+        <div>
+           
+        </div>
         <section className="relative px-4 sm:px-8 md:px-12 lg:px-20 py-24 mx-24">
           <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-20"></div>
           <div className="max-w-7xl mx-auto relative z-10 text-center">

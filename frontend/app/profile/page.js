@@ -22,6 +22,8 @@ const outfit = Outfit({
   weight: "400",
 });
 
+
+
 export default function Profile() {
   const {
     isConnected,
@@ -43,11 +45,18 @@ export default function Profile() {
   const [filteredTransactions, setFilteredTransactions] = useState([]);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-
+  const [username, setUsername] = useState("");
   const handleViewLand = (landId) => {
     router.push(`/viewLand/${landId}`);
   };
-
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const username = localStorage.getItem('username');
+    setUsername(username)
+    if (!token) {
+      router.push(`/login`);
+    }
+  }, []);
   const handleSellProperty = async (propertyId) => {
     try {
       await sellProperty(propertyId);
@@ -66,7 +75,7 @@ export default function Profile() {
     try {
       const allProperties = await viewAll();
       const userProperties = allProperties
-        .map((prop, index) => ({ ...prop, originalIndex: index })) 
+        .map((prop, index) => ({ ...prop, originalIndex: index }))
         .filter(property =>
           property.seller.toLowerCase() === account.toLowerCase() ||
           (property.buyer && property.buyer.toLowerCase() === account.toLowerCase())
@@ -90,6 +99,7 @@ export default function Profile() {
         registrationRequest: prop.registrationRequest || "pending",
         marketStatus: prop.marketStatus || "available",
         transactionData: prop.transactionData || "pending",
+        registrationDate: prop.registrationDate,
         createdAt: new Date().toISOString()
       }));
 
@@ -243,9 +253,16 @@ export default function Profile() {
 
         <div className="min-h-screen px-4 sm:px-8 lg:px-20 py-12 relative z-10">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-            <div>
-              <h1 className="text-3xl font-bold">My Properties</h1>
-              <p className="text-gray-400">{shortenAddress(account)}</p>
+            <div className="flex items-center gap-6">
+              <div className="w-20 h-20 rounded-lg bg-blue-900/20 flex items-center justify-center">
+                <span className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full"> </span>
+
+              </div>
+
+              <div className="flex justify-between flex-col ">
+                <h1 className="text-4xl font-bold">{username}</h1>
+                <p className="text-gray-400">{shortenAddress(account)}</p>
+              </div>
             </div>
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto">
@@ -488,7 +505,13 @@ export default function Profile() {
                       className="w-full bg-gray-600 text-white py-2 rounded-md font-medium cursor-not-allowed"
                       disabled
                     >
-                      Purchased
+                      Registration date: {property.registrationDate && property.registrationDate !== "0"
+                        ? new Date(Number(property.registrationDate) * 1000).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })
+                        : "Not registered"}
                     </button>
                   </div>
                 )}

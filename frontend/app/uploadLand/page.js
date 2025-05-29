@@ -79,8 +79,14 @@ export default function UploadLand() {
   const router = useRouter();
   const [isVerified, setIsVerified] = useState(null);
 
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push(`/login`);
+    }
+  }, []);
 
-    useEffect(() => {
+  useEffect(() => {
     const verifiedStatus = localStorage.getItem('isVerified') === 'true';
     setIsVerified(verifiedStatus);
   }, []);
@@ -209,7 +215,21 @@ export default function UploadLand() {
 
     try {
       const imageUrl = await uploadFileToIPFS(landData.propertyImage);
-
+      const [
+        encumbranceUrl,
+        saleDeedUrl,
+        clearanceUrl,
+        taxDocUrl
+      ] = await Promise.all([
+        landData.encumbranceCert.hasFile ? uploadFileToIPFS(landData.encumbranceCert.file) : Promise.resolve(""),
+        landData.saleDeed.hasFile ? uploadFileToIPFS(landData.saleDeed.file) : Promise.resolve(""),
+        landData.clearanceCert.hasFile ? uploadFileToIPFS(landData.clearanceCert.file) : Promise.resolve(""),
+        landData.propertyTaxDoc.hasFile ? uploadFileToIPFS(landData.propertyTaxDoc.file) : Promise.resolve("")
+      ]);
+      console.log(encumbranceUrl,
+        saleDeedUrl,
+        clearanceUrl,
+        taxDocUrl)
       setUploadStatus('Registering property on blockchain...');
       const propertyData = {
         landImage: imageUrl,
@@ -219,10 +239,10 @@ export default function UploadLand() {
         price: landData.price.toString(),
         description: landData.description,
         landType: landData.landType,
-        saleDeed: landData.saleDeed.hasFile,
-        clearanceCertificates: landData.clearanceCert.hasFile,
-        propertyTaxDocument: landData.propertyTaxDoc.hasFile,
-        encumbranceCertificate: landData.encumbranceCert.hasFile
+        saleDeed: saleDeedUrl,
+        clearanceCertificates: clearanceUrl,
+        propertyTaxDocument: taxDocUrl,
+        encumbranceCertificate: encumbranceUrl
       };
       const tx = await addProperty(propertyData);
       setUploadStatus('Transaction sent. Waiting for confirmation...');
@@ -237,32 +257,32 @@ export default function UploadLand() {
 
 
   if (isVerified === null) {
-    return null; 
+    return null;
   }
 
-    if (!isVerified) {
+  if (!isVerified) {
     return (
       <div className={`${outfit.className} text-white min-h-screen flex flex-col`}>
         <div className="flex-grow">
           <Header />
-          
+
           <section className="px-4 sm:px-8 md:px-12 lg:px-20 py-16 relative z-10">
             <div className="max-w-4xl mx-auto bg-gray-950/10 backdrop-blur-lg border-gray-100/10 border rounded-xl p-6 sm:p-8 shadow-2xl text-center">
               <h2 className="text-2xl sm:text-3xl font-bold mb-6 hover:text-[#77227F]">
                 Verification Required
               </h2>
-              
+
               <div className="mb-8">
                 <svg className="w-16 h-16 mx-auto text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
-              
+
               <p className="text-gray-300 mb-8">
                 To list your property for sale, we need to verify your identity first.
                 This helps ensure the security and authenticity of all transactions.
               </p>
-              
+
               <button
                 onClick={navigateToVerification}
                 className="px-6 py-3 rounded-lg font-medium bg-[#77227F] hover:bg-purple-700 transition-colors"
@@ -341,8 +361,8 @@ export default function UploadLand() {
                         onClick={() => triggerFileInput(encumbranceRef)}
                         disabled={isUploading}
                         className={`w-full text-left p-3 border rounded-lg flex items-center justify-between ${landData.encumbranceCert.hasFile
-                            ? 'border-green-500 bg-green-500/10'
-                            : 'border-gray-700 hover:border-[#77227F]'
+                          ? 'border-green-500 bg-green-500/10'
+                          : 'border-gray-700 hover:border-[#77227F]'
                           }`}
                       >
                         <div className="flex items-center">
@@ -370,8 +390,8 @@ export default function UploadLand() {
                         onClick={() => triggerFileInput(saleDeedRef)}
                         disabled={isUploading}
                         className={`w-full text-left p-3 border rounded-lg flex items-center justify-between ${landData.saleDeed.hasFile
-                            ? 'border-green-500 bg-green-500/10'
-                            : 'border-gray-700 hover:border-[#77227F]'
+                          ? 'border-green-500 bg-green-500/10'
+                          : 'border-gray-700 hover:border-[#77227F]'
                           }`}
                       >
                         <div className="flex items-center">
@@ -399,8 +419,8 @@ export default function UploadLand() {
                         onClick={() => triggerFileInput(clearanceRef)}
                         disabled={isUploading}
                         className={`w-full text-left p-3 border rounded-lg flex items-center justify-between ${landData.clearanceCert.hasFile
-                            ? 'border-green-500 bg-green-500/10'
-                            : 'border-gray-700 hover:border-[#77227F]'
+                          ? 'border-green-500 bg-green-500/10'
+                          : 'border-gray-700 hover:border-[#77227F]'
                           }`}
                       >
                         <div className="flex items-center">
@@ -428,8 +448,8 @@ export default function UploadLand() {
                         onClick={() => triggerFileInput(taxDocRef)}
                         disabled={isUploading}
                         className={`w-full text-left p-3 border rounded-lg flex items-center justify-between ${landData.propertyTaxDoc.hasFile
-                            ? 'border-green-500 bg-green-500/10'
-                            : 'border-gray-700 hover:border-[#77227F]'
+                          ? 'border-green-500 bg-green-500/10'
+                          : 'border-gray-700 hover:border-[#77227F]'
                           }`}
                       >
                         <div className="flex items-center">
@@ -591,15 +611,15 @@ export default function UploadLand() {
                       !landData.landSize ||
                       !landData.measurementType}
                     className={`w-full py-3 px-6 rounded-lg font-medium transition-colors ${(isUploading || !isConnected ||
-                        !landData.propertyImage ||
-                        !landData.description ||
-                        !landData.price ||
-                        !landData.district ||
-                        !landData.landType ||
-                        !landData.landSize ||
-                        !landData.measurementType)
-                        ? 'bg-gray-600 cursor-not-allowed'
-                        : 'bg-[#77227F] hover:bg-purple-700'
+                      !landData.propertyImage ||
+                      !landData.description ||
+                      !landData.price ||
+                      !landData.district ||
+                      !landData.landType ||
+                      !landData.landSize ||
+                      !landData.measurementType)
+                      ? 'bg-gray-600 cursor-not-allowed'
+                      : 'bg-[#77227F] hover:bg-purple-700'
                       }`}
                   >
                     {isUploading ? 'Registering...' : !isConnected ? 'Connect Wallet to Register' : 'Register Property'}
