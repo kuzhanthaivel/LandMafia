@@ -1,10 +1,12 @@
 services:
   - type: web
-    name: land_register
-    runtime: python
-    buildCommand: ""
-    startCommand: python app.py
+    name: face-verification-api
+    runtime: docker  # Uses Dockerfile
+    env: python
+    buildCommand: ""  # Docker handles builds
+    startCommand: ""  # Defined in Dockerfile
     envVars:
-      - key: FLASK_ENV
-        value: production
-    plan: free
+      - key: PORT
+        value: 5000
+      - key: PYTHONUNBUFFERED
+        value: True

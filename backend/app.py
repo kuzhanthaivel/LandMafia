@@ -3,6 +3,7 @@ from flask_cors import CORS
 from deepface import DeepFace
 import cv2
 import numpy as np
+import os
 
 app = Flask(__name__)
 CORS(app)
@@ -15,6 +16,14 @@ def bytes_to_image(image_bytes):
     print(f"Image shape: {img.shape}")  
     return img
 
+@app.route('/versions')
+def versions():
+    import pkg_resources
+    return {
+        'numpy': pkg_resources.get_distribution('numpy').version,
+        'tensorflow': pkg_resources.get_distribution('tensorflow').version
+    }
+    
 @app.route('/verify-face', methods=['POST'])
 def verify_face():
     print("\n=== New Face Verification Request ===")
@@ -61,4 +70,4 @@ def verify_face():
 
 if __name__ == '__main__':
     print("Starting Flask server...........")
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
