@@ -4,10 +4,20 @@ from deepface import DeepFace
 import cv2
 import numpy as np
 import os
-from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)
+
+# Configure CORS properly - this should be before route definitions
+cors = CORS(app, resources={
+    r"/verify-face": {
+        "origins": ["http://localhost:3000", "https://your-production-frontend.com"],
+        "methods": ["POST"],
+        "allow_headers": ["Content-Type"]
+    },
+    r"/versions": {
+        "origins": "*"
+    }
+})
 
 def bytes_to_image(image_bytes):
     """Convert uploaded bytes to OpenCV image"""
@@ -16,16 +26,6 @@ def bytes_to_image(image_bytes):
     img = cv2.imdecode(np_array, cv2.IMREAD_COLOR)
     print(f"Image shape: {img.shape}")  
     return img
-
-# ✅ Enable CORS for localhost:3000
-CORS(app, resources={
-    r"/*": {
-        "origins": [
-            "http://localhost:3000",  # Allow your actual frontend
-            "https://your-production-frontend.com"  # Update as needed
-        ]
-    }
-})
 
 @app.route('/versions')
 def versions():
