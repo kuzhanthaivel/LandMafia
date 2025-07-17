@@ -17,11 +17,12 @@ def bytes_to_image(image_bytes):
     print(f"Image shape: {img.shape}")  
     return img
 
+# ✅ Enable CORS for localhost:3000
 CORS(app, resources={
     r"/*": {
         "origins": [
-            "http://localhost:3001",  # Allow development frontend
-            "https://your-production-frontend.com"  # Allow production frontend
+            "http://localhost:3000",  # Allow your actual frontend
+            "https://your-production-frontend.com"  # Update as needed
         ]
     }
 })
