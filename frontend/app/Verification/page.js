@@ -66,7 +66,7 @@ export default function DocumentVerification() {
       formData.append('document', documentFile);
       formData.append('selfie', selfieFile);
 
-      const response = await fetch('https://land-register.onrender.com/verify-face', {
+      const response = await fetch('http://localhost:5000/verify-face', {
         method: 'POST',
         body: formData,
       });

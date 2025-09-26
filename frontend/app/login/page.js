@@ -59,7 +59,7 @@ export default function LoginPage() {
     walletAddress: ''
   });
   const [usernameAvailable, setUsernameAvailable] = useState(false);
-  const [checkingUsername, setCheckingUsername] = useState(false);
+  const [, setCheckingUsername] = useState(false);
   const [apiError, setApiError] = useState(null);
   const [loading, setLoading] = useState({
     login: false,
