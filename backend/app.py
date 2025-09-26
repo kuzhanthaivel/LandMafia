@@ -7,10 +7,9 @@ import os
 
 app = Flask(__name__)
 
-# Configure CORS properly - this should be before route definitions
 cors = CORS(app, resources={
     r"/verify-face": {
-        "origins": ["http://localhost:3000", "https://your-production-frontend.com"],
+        "origins": ["http://localhost:3000", "https://land-mafia.vercel.app/"],
         "methods": ["POST"],
         "allow_headers": ["Content-Type"]
     },
